@@ -14,6 +14,7 @@
 
 static int	ft_manage_arrows(unsigned char seq[4], char **line, t_shell *shell)
 {
+	char	*prompt;
 	char	*new_line;
 
 	if (read(STDIN_FILENO, &seq[1], 1) != 1
@@ -31,8 +32,9 @@ static int	ft_manage_arrows(unsigned char seq[4], char **line, t_shell *shell)
 		free(*line);
 		*line = new_line;
 		printf("\r\033[K");
-		ft_print_prompt(shell);
-		ft_printf("%s", line);
+		prompt = ft_print_prompt();
+		ft_printf ("%s%s", prompt, *line);
+		free(prompt);
 	}
 	return (1);
 }

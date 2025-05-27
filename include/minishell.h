@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/30 18:47:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/25 20:25:34 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/27 13:07:29 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,6 +33,8 @@
 // À voir si j’en aurai besoin
 # include <termios.h>
 # include <sys/ioctl.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 # define HGRN	"\e[0;92m"
 # define HMAG	"\e[0;95m"
@@ -52,7 +54,8 @@
 extern volatile sig_atomic_t	g_signal;
 
 void	printbanner(void);
-void	ft_print_prompt(t_shell *shell);
+// void	ft_print_prompt(t_shell *shell);
+char	*ft_print_prompt(t_shell *shell);
 char	*ft_readline(t_shell *shell);
 void	ft_process(char **env, t_shell *shell);
 
