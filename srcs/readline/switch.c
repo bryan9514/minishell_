@@ -32,7 +32,7 @@ static int	ft_manage_arrows(unsigned char seq[4], char **line, t_shell *shell)
 		free(*line);
 		*line = new_line;
 		printf("\r\033[K");
-		prompt = ft_print_prompt();
+		prompt = ft_print_prompt(shell);
 		ft_printf ("%s%s", prompt, *line);
 		free(prompt);
 	}
