@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:32:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 12:56:11 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/27 13:23:20 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,17 +28,3 @@ void	ft_signals_control_main(void)
 	signal(SIGQUIT, SIG_IGN);
 }
 
-int	ft_check_signal(char *line)
-{
-	if (!line) 
-	{
-		ft_putendl_fd("exit", STDERR_FILENO);
-		exit(0);
-	}
-	if (line[0] == '\0')
-	{
-		free(line);
-		return (1);
-	}
-	return (0);
-}

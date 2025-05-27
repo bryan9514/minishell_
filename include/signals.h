@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:44:05 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 11:56:19 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/27 16:59:16 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,6 @@ typedef enum e_context
 
 void	ft_sigint_handler(int signal);
 void	ft_signals_control_main(void);
-int	ft_check_signal(char *line);
+
 
 #endif

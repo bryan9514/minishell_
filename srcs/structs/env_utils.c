@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/15 18:22:00 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/20 11:52:08 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/27 15:12:41 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,3 +47,5 @@ char	*ft_extract_value(char *data)
 		value = ft_strdup(tmp);
 	return (value);
 }
+
+

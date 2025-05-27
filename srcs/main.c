@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/01 08:26:31 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 13:19:46 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/27 17:18:10 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,7 @@ volatile sig_atomic_t	g_signal = 0;
 
 // 	(void) argc;
 // 	(void) argv;
-// 	printbanner();
+// 	// printbanner();
 // 	shell = init_shell(env);
 // 	ft_signals_control_main();
 // 	while (shell)
@@ -77,7 +77,6 @@ volatile sig_atomic_t	g_signal = 0;
 // 		if (!line)
 // 			break ;
 // 		ft_handle_line(line, env, shell);
-// 		free(line);
 // 	}
 // 	ft_free_shell(shell);
 // 	if (isatty(STDIN_FILENO))
@@ -89,16 +88,16 @@ volatile sig_atomic_t	g_signal = 0;
 char	*ft_print_prompt(t_shell *shell)
 {
 	char	*prompt;
-	char	*logname;
+	t_env	*logname;
 	char	*tmp;
 	char	pwd[BUFSIZ];
 
 	if (!getcwd(pwd, sizeof(pwd)))
 		return (ft_strdup(HGRN"minishell $> "RST));
-	logname = ft_get_val("LOGNAME", shell);
+	logname = ft_find_env(shell, "LOGNAME");
 	if (!logname)
-		logname = "user";
-	prompt = ft_strjoin(HGRN, logname);
+		logname->value = "user";
+	prompt = ft_strjoin(HGRN, logname->value);
 	prompt = ft_strjoin_free(prompt, ":");
 	prompt = ft_strjoin_free(prompt, RST);
 	tmp = ft_strjoin(prompt, HMAG);
@@ -112,7 +111,7 @@ char	*ft_print_prompt(t_shell *shell)
 
 static void	ft_handle_line(char *line, char **env, t_shell *shell)
 {
-	ft_init_history(line, shell);
+	add_history(line);
 	ft_parse(line, shell);
 	ft_process(env, shell);
 	while (wait(NULL) != -1)
@@ -136,13 +135,12 @@ int	main(int argc, char **argv, char **env)
 		prompt = ft_print_prompt(shell);
 		line = readline(prompt);
 		free(prompt);
-		if (ft_check_signal(line))
-			continue ;
 		if (!line)
 			break ;
 		ft_handle_line(line, env, shell);
 		free(line);
 	}
+	rl_clear_history();
 	ft_free_shell(shell);
 	if (isatty(STDIN_FILENO))
 		ft_printf(YELLOW"\nSEE YOU SOON !\n"RST);
