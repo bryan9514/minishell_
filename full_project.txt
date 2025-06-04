@@ -6,7 +6,7 @@
 #    By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/05/01 07:16:59 by brturcio          #+#    #+#              #
-#    Updated: 2025/05/24 11:10:43 by brturcio         ###   ########.fr        #
+#    Updated: 2025/05/31 21:01:05 by brturcio         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -32,9 +32,9 @@ SRCS			:=	$(DIR_SRCS)/banner.c $(DIR_SRCS)/main.c $(DIR_SRCS)/free.c	\
 					$(DIR_SRCS)/parsing/parse.c $(DIR_SRCS)/parsing/token.c		\
 					$(DIR_SRCS)/parsing/file.c $(DIR_SRCS)/parsing/heredoc.c	\
 					$(DIR_SRCS)/parsing/sort_token.c $(DIR_SRCS)/parsing/cmd.c	\
-					$(DIR_SRCS)/exec/exec.c										\
+					$(DIR_SRCS)/exec/exec.c		$(DIR_SRCS)/exec/exec_util.c			\
 					$(DIR_SRCS)/readline/readline.c $(DIR_SRCS)/readline/switch.c\
-					$(DIR_SRCS)/signals/signal.c
+					$(DIR_SRCS)/signals/signal.c $(DIR_SRCS)/signals/signal_control.c
 
 
 					#$(wildcard $(DIR_SRCS)/builtins/*.c)
@@ -585,10 +585,10 @@ void	ft_parse(char *line, t_shell *shell)
 /*                                                        :::      ::::::::   */
 /*   heredoc.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/24 17:23:25 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/07 13:11:07 by yel-mens         ###   ########.fr       */
+/*   Updated: 2025/05/31 19:16:52 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -641,6 +641,7 @@ static void	ft_read_stdin(int end[2], char *limiter, t_token *a, t_shell *shl)
 	char	*line;
 	int		len_line;
 
+	ft_control_signals_heredoc();
 	close(end[0]);
 	write(1, "here_doc> ", 10);
 	line = ft_read_line(STDIN_FILENO);
@@ -688,7 +689,7 @@ void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 14:45:12 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/27 15:00:23 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/29 20:24:19 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -763,11 +764,46 @@ void	ft_free_shell(t_shell *shell)
 			ft_free_cmds(shell->cmds);
 		if (shell->env)
 			ft_free_env(shell->env);
-		if (shell->history)
-			ft_free_history(shell->history);
+		if (shell->pids)
+			free(shell->pids);
+		// if (shell->history)
+		// 	ft_free_history(shell->history);
 		rl_clear_history();
 		free(shell);
 	}
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   signal_control.c                                   :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/29 16:12:14 by brturcio          #+#    #+#             */
+/*   Updated: 2025/05/31 23:28:24 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+void	ft_control_signals_main(void)
+{
+	if (g_signal != HEREDOC_SIGINT)
+		g_signal = MAIN_SIGINT;
+	signal(SIGINT, ft_sigint_handler);
+	signal(SIGQUIT, SIG_IGN);
+}
+void	ft_control_signals_child(void)
+{
+	g_signal = EXEC_SIGINT;
+	signal(SIGINT, SIG_DFL);
+	signal(SIGQUIT, SIG_DFL);
+	signal(SIGPIPE, SIG_IGN);
+}
+void	ft_control_signals_heredoc(void)
+{
+	g_signal = HEREDOC_SIGINT;
+	signal(SIGINT, ft_sigint_handler);
 }
 /* ************************************************************************** */
 /*                                                                            */
@@ -777,7 +813,7 @@ void	ft_free_shell(t_shell *shell)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:32:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 13:23:20 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/31 23:29:07 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -785,20 +821,66 @@ void	ft_free_shell(t_shell *shell)
 
 void	ft_sigint_handler(int signal)
 {
-	g_signal = signal;
-	write(STDOUT_FILENO, "\n", 1);
-	rl_on_new_line();
-	rl_replace_line("", 0);
-	rl_redisplay();
-
+	(void)signal;
+	if (g_signal == MAIN_SIGINT)
+	{
+		write(STDOUT_FILENO, "\n", 1);
+		rl_replace_line("", 0);
+		rl_on_new_line();
+		rl_redisplay();
+	}
+	else if (g_signal == HEREDOC_SIGINT)
+	{
+		write(STDOUT_FILENO, "\n", 1);
+		rl_replace_line("", 0);
+		rl_on_new_line();
+		ioctl(STDIN_FILENO, TIOCSTI, "\n");
+	}
+	else if (g_signal == EXEC_SIGINT)
+		write(STDOUT_FILENO, "\n", 1);
 }
 
-void	ft_signals_control_main(void)
+void	ft_wait_and_set_exit_status(t_shell *shell)
 {
-	signal(SIGINT, ft_sigint_handler);
-	signal(SIGQUIT, SIG_IGN);
+	int	i;
+	int	status;
+	int	sig;
+
+	i = 0;
+	while (i < shell->nb_cmds)
+	{
+		if (shell->pids[i] > 0)
+		{
+			waitpid(shell->pids[i], &status, 0);
+			if (WIFSIGNALED(status))
+			{
+				sig = WTERMSIG(status);
+				shell->exit_status = 128 + sig;
+				if (sig == SIGQUIT)
+					ft_putendl_fd("Quit (core dumped)", STDOUT_FILENO);
+			}
+			else if (WIFEXITED(status))
+				shell->exit_status = WEXITSTATUS(status);
+		}
+		i++;
+	}
 }
 
+void	ft_update_exit_status_by_signal(t_shell *shell)
+{
+	if (g_signal)
+	{
+		shell->exit_status = 130;
+		g_signal = 0;
+	}
+	// if (g_signal == MAIN_SIGINT)
+	// 	shell->exit_status = 130;
+	// else if (g_signal == EXEC_SIGQUIT)
+	// 	shell->exit_status = 131;
+	// else if (g_signal == HEREDOC_SIGINT)
+	// 	shell->exit_status = 130;
+	// g_signal = NO_SIGNAL;
+}
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -807,13 +889,13 @@ void	ft_signals_control_main(void)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/01 08:26:31 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 15:48:01 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/31 23:28:01 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-volatile sig_atomic_t	g_signal = 0;
+volatile sig_atomic_t	g_signal = NO_SIGNAL;
 
 // void	ft_print_prompt(t_shell *shell)
 // {
@@ -865,7 +947,7 @@ volatile sig_atomic_t	g_signal = 0;
 
 // 	(void) argc;
 // 	(void) argv;
-// 	printbanner();
+// 	// printbanner();
 // 	shell = init_shell(env);
 // 	ft_signals_control_main();
 // 	while (shell)
@@ -878,7 +960,6 @@ volatile sig_atomic_t	g_signal = 0;
 // 		if (!line)
 // 			break ;
 // 		ft_handle_line(line, env, shell);
-// 		free(line);
 // 	}
 // 	ft_free_shell(shell);
 // 	if (isatty(STDIN_FILENO))
@@ -930,21 +1011,20 @@ int	main(int argc, char **argv, char **env)
 	(void) argv;
 	// printbanner();
 	shell = init_shell(env);
-	ft_signals_control_main();
 	while (shell)
 	{
-		g_signal = 0;
 		prompt = ft_print_prompt(shell);
+		ft_control_signals_main();
 		line = readline(prompt);
 		free(prompt);
+		ft_update_exit_status_by_signal(shell);
 		if (!line)
-			break ;
+			break;
 		ft_handle_line(line, env, shell);
 		free(line);
 	}
+	rl_clear_history();
 	ft_free_shell(shell);
-	if (isatty(STDIN_FILENO))
-		ft_printf(YELLOW"\nSEE YOU SOON !\n"RST);
 	return (EXIT_SUCCESS);
 }
 /* ************************************************************************** */
@@ -1139,7 +1219,7 @@ int	ft_export_builtins(t_shell *shell)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 14:27:43 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 15:16:48 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/27 16:47:56 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1200,12 +1280,12 @@ t_env	*ft_var_exists(t_env *env, char *arg)
 	{
 		if (ft_strcmp(env->var, var) == 0)
 		{
-			// free(var);
+			free(var);
 			return (env);
 		}
 		env = env->next;
 	}
-
+	free(var);
 	return (NULL);
 }
 
@@ -1790,10 +1870,10 @@ int	ft_cd_path(char *arg, t_shell *shell)
 /*                                                        :::      ::::::::   */
 /*   exec.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/04 11:21:39 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/07 10:03:07 by yel-mens         ###   ########.fr       */
+/*   Updated: 2025/05/31 22:28:06 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1858,7 +1938,7 @@ static void	ft_close(t_cmd *all_cmd, t_cmd *cmd)
 	}
 }
 
-static void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
+void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
 {
 	ft_close(shell->cmds, cmd);
 	if (!ft_dup_files(cmd))
@@ -1880,27 +1960,70 @@ static void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
 
 void	ft_process(char **env, t_shell *shell)
 {
-	pid_t	pid;
+	shell->nb_cmds = ft_count_cmds(shell->cmds);
+	shell->pids = malloc(sizeof(pid_t) * shell->nb_cmds);
+	if (!shell->pids)
+		return ;
+	if (!ft_init_process(env, shell))
+		return ;
+	ft_wait_and_set_exit_status(shell);
+	free(shell->pids);
+	shell->pids = NULL;
+	ft_free_cmds(shell->cmds);
+	shell->cmds = NULL;
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   exec_util.c                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/29 21:25:01 by brturcio          #+#    #+#             */
+/*   Updated: 2025/05/31 21:03:32 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+int	ft_init_process(char **env, t_shell *shell)
+{
+	int		i;
 	t_cmd	*cmd;
 
+	i = 0;
 	cmd = shell->cmds;
 	while (cmd)
 	{
 		if (!ft_no_fork(cmd, shell))
 		{
-			pid = fork();
-			if (pid < 0)
-				return ;
-			if (!pid)
+			shell->pids[i] = fork();
+			if (shell->pids[i] < 0)
+				return (1);
+			if (!shell->pids[i])
 			{
+				ft_control_signals_child();
 				ft_child_process(cmd, env, shell);
 				exit(EXIT_FAILURE);
 			}
+			i++;
 		}
 		cmd = cmd->next;
 	}
-	ft_free_cmds(shell->cmds);
-	shell->cmds = NULL;
+	return (1);
+}
+
+int	ft_count_cmds(t_cmd *cmds)
+{
+	int	count;
+
+	count = 0;
+	while (cmds)
+	{
+		count++;
+		cmds = cmds->next;
+	}
+	return (count);
 }
 /* ************************************************************************** */
 /*                                                                            */
@@ -2260,10 +2383,10 @@ void	ft_init_env(char **env, t_shell *shell)
 /*                                                        :::      ::::::::   */
 /*   history.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/07 17:24:58 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/09 17:26:51 by yel-mens         ###   ########.fr       */
+/*   Updated: 2025/05/27 17:15:18 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -2317,10 +2440,10 @@ void	ft_free_history(t_hist *history)
 /*                                                        :::      ::::::::   */
 /*   shell.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 12:13:11 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/09 17:15:40 by yel-mens         ###   ########.fr       */
+/*   Updated: 2025/05/29 20:37:54 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -2339,6 +2462,8 @@ t_shell	*init_shell(char **env)
 	shell->cmds = NULL;
 	shell->history = NULL;
 	shell->env = NULL;
+	shell->pids = NULL;
+	shell->nb_cmds = 0;
 	shell->exit_status = EXIT_SUCCESS;
 	ft_init_env(env, shell);
 	return (shell);
@@ -2519,7 +2644,7 @@ void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *token, t_shell *shell);
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 12:03:15 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/15 20:19:02 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/29 20:21:31 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -2557,6 +2682,8 @@ typedef struct s_shell
 	t_env	*env;
 	t_hist	*history;
 	int		exit_status;
+	pid_t	*pids;
+	int		nb_cmds;
 }	t_shell;
 
 /* * * *  *
@@ -2613,7 +2740,7 @@ void	ft_free_shell(t_shell *shell);
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:44:05 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 11:56:19 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/31 20:59:49 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -2621,18 +2748,22 @@ void	ft_free_shell(t_shell *shell);
 # define SIGNALS_H
 
 # include "minishell.h"
-
-// À voir si j’en aurai besoin
 typedef enum e_context
 {
-	CTX_PROMPT,
-	CTX_EXEC,
-	CTX_HEREDOC
-}	t_context;
+	NO_SIGNAL,
+	MAIN_SIGINT,
+	HEREDOC_SIGINT,
+	EXEC_SIGINT,
+	EXEC_SIGQUIT
+}		t_context;
+
+void	ft_control_signals_main(void);
+void	ft_control_signals_child(void);
+void	ft_control_signals_heredoc(void);
 
 void	ft_sigint_handler(int signal);
-void	ft_signals_control_main(void);
-int	ft_check_signal(char *line);
+void	ft_wait_and_set_exit_status(t_shell *shell);
+void	ft_update_exit_status_by_signal(t_shell *shell);
 
 #endif
 /* ************************************************************************** */
@@ -2643,7 +2774,7 @@ int	ft_check_signal(char *line);
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/30 18:47:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 13:07:29 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/29 22:12:19 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -2691,9 +2822,12 @@ int	ft_check_signal(char *line);
 extern volatile sig_atomic_t	g_signal;
 
 void	printbanner(void);
-// void	ft_print_prompt(t_shell *shell);
+//void	ft_print_prompt(t_shell *shell);
 char	*ft_print_prompt(t_shell *shell);
 char	*ft_readline(t_shell *shell);
+void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell);
 void	ft_process(char **env, t_shell *shell);
+int		ft_init_process(char **env, t_shell *shell);
+int		ft_count_cmds(t_cmd *cmds);
 
 #endif

@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 14:45:12 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/27 17:17:58 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/29 20:24:19 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,6 +81,8 @@ void	ft_free_shell(t_shell *shell)
 			ft_free_cmds(shell->cmds);
 		if (shell->env)
 			ft_free_env(shell->env);
+		if (shell->pids)
+			free(shell->pids);
 		// if (shell->history)
 		// 	ft_free_history(shell->history);
 		rl_clear_history();

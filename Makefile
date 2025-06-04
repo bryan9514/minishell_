@@ -6,7 +6,7 @@
 #    By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/05/01 07:16:59 by brturcio          #+#    #+#              #
-#    Updated: 2025/05/24 11:10:43 by brturcio         ###   ########.fr        #
+#    Updated: 2025/05/31 21:01:05 by brturcio         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -32,9 +32,9 @@ SRCS			:=	$(DIR_SRCS)/banner.c $(DIR_SRCS)/main.c $(DIR_SRCS)/free.c	\
 					$(DIR_SRCS)/parsing/parse.c $(DIR_SRCS)/parsing/token.c		\
 					$(DIR_SRCS)/parsing/file.c $(DIR_SRCS)/parsing/heredoc.c	\
 					$(DIR_SRCS)/parsing/sort_token.c $(DIR_SRCS)/parsing/cmd.c	\
-					$(DIR_SRCS)/exec/exec.c										\
+					$(DIR_SRCS)/exec/exec.c		$(DIR_SRCS)/exec/exec_util.c			\
 					$(DIR_SRCS)/readline/readline.c $(DIR_SRCS)/readline/switch.c\
-					$(DIR_SRCS)/signals/signal.c
+					$(DIR_SRCS)/signals/signal.c $(DIR_SRCS)/signals/signal_control.c
 
 
 					#$(wildcard $(DIR_SRCS)/builtins/*.c)

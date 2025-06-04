@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   exec.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/04 11:21:39 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/07 10:03:07 by yel-mens         ###   ########.fr       */
+/*   Updated: 2025/05/31 22:28:06 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,7 +71,7 @@ static void	ft_close(t_cmd *all_cmd, t_cmd *cmd)
 	}
 }
 
-static void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
+void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
 {
 	ft_close(shell->cmds, cmd);
 	if (!ft_dup_files(cmd))
@@ -93,25 +93,15 @@ static void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
 
 void	ft_process(char **env, t_shell *shell)
 {
-	pid_t	pid;
-	t_cmd	*cmd;
-
-	cmd = shell->cmds;
-	while (cmd)
-	{
-		if (!ft_no_fork(cmd, shell))
-		{
-			pid = fork();
-			if (pid < 0)
-				return ;
-			if (!pid)
-			{
-				ft_child_process(cmd, env, shell);
-				exit(EXIT_FAILURE);
-			}
-		}
-		cmd = cmd->next;
-	}
+	shell->nb_cmds = ft_count_cmds(shell->cmds);
+	shell->pids = malloc(sizeof(pid_t) * shell->nb_cmds);
+	if (!shell->pids)
+		return ;
+	if (!ft_init_process(env, shell))
+		return ;
+	ft_wait_and_set_exit_status(shell);
+	free(shell->pids);
+	shell->pids = NULL;
 	ft_free_cmds(shell->cmds);
 	shell->cmds = NULL;
 }

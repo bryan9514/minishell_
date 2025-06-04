@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 12:03:15 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/15 20:19:02 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/29 20:21:31 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,8 @@ typedef struct s_shell
 	t_env	*env;
 	t_hist	*history;
 	int		exit_status;
+	pid_t	*pids;
+	int		nb_cmds;
 }	t_shell;
 
 /* * * *  *

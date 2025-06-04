@@ -6,13 +6,13 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/01 08:26:31 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 17:18:10 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/04 20:52:12 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-volatile sig_atomic_t	g_signal = 0;
+volatile sig_atomic_t	g_signal = NO_SIGNAL;
 
 // void	ft_print_prompt(t_shell *shell)
 // {
@@ -128,21 +128,20 @@ int	main(int argc, char **argv, char **env)
 	(void) argv;
 	// printbanner();
 	shell = init_shell(env);
-	ft_signals_control_main();
 	while (shell)
 	{
-		g_signal = 0;
 		prompt = ft_print_prompt(shell);
+		ft_control_signals_main();
 		line = readline(prompt);
 		free(prompt);
+		ft_update_exit_status_by_signal(shell);
 		if (!line)
-			break ;
+			break;
+		// ft_printf("%d", shell->exit_status);
 		ft_handle_line(line, env, shell);
 		free(line);
 	}
 	rl_clear_history();
 	ft_free_shell(shell);
-	if (isatty(STDIN_FILENO))
-		ft_printf(YELLOW"\nSEE YOU SOON !\n"RST);
 	return (EXIT_SUCCESS);
 }

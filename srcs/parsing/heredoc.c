@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   heredoc.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/24 17:23:25 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/07 13:11:07 by yel-mens         ###   ########.fr       */
+/*   Updated: 2025/05/31 19:16:52 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,6 +59,7 @@ static void	ft_read_stdin(int end[2], char *limiter, t_token *a, t_shell *shl)
 	char	*line;
 	int		len_line;
 
+	ft_control_signals_heredoc();
 	close(end[0]);
 	write(1, "here_doc> ", 10);
 	line = ft_read_line(STDIN_FILENO);

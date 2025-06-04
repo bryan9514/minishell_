@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/30 18:47:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 17:36:44 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/05/29 22:12:19 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,6 +57,9 @@ void	printbanner(void);
 //void	ft_print_prompt(t_shell *shell);
 char	*ft_print_prompt(t_shell *shell);
 char	*ft_readline(t_shell *shell);
+void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell);
 void	ft_process(char **env, t_shell *shell);
+int		ft_init_process(char **env, t_shell *shell);
+int		ft_count_cmds(t_cmd *cmds);
 
 #endif
