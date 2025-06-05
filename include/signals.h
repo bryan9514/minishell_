@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:44:05 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/04 21:04:58 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/04 21:14:04 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,8 @@ typedef enum e_context
 	NO_SIGNAL,
 	MAIN_SIGINT,
 	HEREDOC_SIGINT,
-	EXEC_SIGINT
+	EXEC_SIGINT,
+	EXEC_SIGQUIT
 }		t_context;
 
 void	ft_control_signals_main(void);
