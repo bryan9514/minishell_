@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/29 16:12:14 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/12 12:17:44 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/12 20:29:42 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,8 +26,14 @@ void	ft_control_signals_child(void)
 }
 void	ft_control_signals_heredoc(void)
 {
-
 	signal(SIGINT, ft_handler_heredoc);
+	signal(SIGQUIT, SIG_IGN);
+}
+
+
+void	ft_signals_ign(void)
+{
+	signal(SIGINT, SIG_IGN);
 	signal(SIGQUIT, SIG_IGN);
 }
 

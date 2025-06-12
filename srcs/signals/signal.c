@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:32:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/12 12:22:14 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/12 22:00:34 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,29 +25,11 @@ void	ft_sigint_handler(int signal)
 void	ft_handler_heredoc(int signal)
 {
 	(void)signal;
-	g_signal = HEREDOC_SIGINT;
-	// write(1, "^C", 2);
-	// write(1, "\n", 1); // Para mostrar nueva línea como bash
-	exit(130); // Código estándar para Ctrl+C
-	// rl_replace_line("", 0);
-	// rl_on_new_line();
-	// ioctl(0, TIOCSTI, "\n");
+	write(STDOUT_FILENO, "\n", 1);
+	exit(EXIT_SIGINT);
 }
 
-
-/**
- * @brief Waits for all child processes and sets the appropriate exit status.
- *
- * For each child process:
- * - If terminated by signal, sets `exit_status = 128 + signal`.
- * - If terminated normally, sets `exit_status = exit code`.
- * - Prints "Quit (core dumped)" if the child received SIGQUIT.
- *
- * This ensures `$?` behaves like in bash.
- *
- * @param shell The shell state structure.
- */
-void	ft_wait_and_set_exit_status(t_shell *shell)
+void	ft_wait_status_child(t_shell *shell)
 {
 	int	i;
 	int	status;
@@ -56,11 +38,7 @@ void	ft_wait_and_set_exit_status(t_shell *shell)
 
 	i = 0;
 	first_signal = 1;
-
-	// 1. ANTES de esperar, el padre se configura para IGNORAR las señales.
-	signal(SIGINT, SIG_IGN);
-	signal(SIGQUIT, SIG_IGN);
-
+	ft_signals_ign();
 	while (i < shell->nb_cmds)
 	{
 		if (shell->pids[i] > 0)
@@ -86,6 +64,7 @@ void	ft_wait_and_set_exit_status(t_shell *shell)
 		}
 		i++;
 	}
+	ft_control_signals_main();
 }
 
 void	ft_update_exit_status_by_signal(t_shell *shell)
@@ -97,3 +76,5 @@ void	ft_update_exit_status_by_signal(t_shell *shell)
 	// 	shell->exit_status = 131;
 	g_signal = NO_SIGNAL;
 }
+
+

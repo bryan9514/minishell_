@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/24 17:23:25 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/06/12 12:23:07 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/12 21:53:23 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,71 +82,49 @@ static void	ft_read_stdin(int end[2], char *limiter, t_token *a, t_shell *shl)
 	exit(EXIT_FAILURE);
 }
 
+void	ft_heredoc_continuation(t_shell *shell, pid_t pid, struct termios *original_config, int *end)
+{
+	int status;
+
+	close(end[1]);
+	ft_signals_ign();
+	waitpid(pid, &status, 0);
+	tcsetattr(STDIN_FILENO, TCSANOW, original_config);
+	ft_control_signals_main();
+	if (WIFEXITED(status) && WEXITSTATUS(status) == 130)
+	{
+		shell->exit_status = 130;
+		shell->cmds->in = -1;
+		close(end[0]);
+	}
+	else
+		shell->cmds->in = end[0];
+}
+
 void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
 {
 	pid_t	pid;
 	int		end[2];
+	struct termios	original_config;
+	struct termios	heredoc_config;
 
+	(void)cmd;
+	tcgetattr(STDIN_FILENO, &original_config);
+	heredoc_config = original_config;
+	heredoc_config.c_lflag &= ~ECHOCTL;
+	tcsetattr(STDIN_FILENO, TCSANOW, &heredoc_config);
 	if (pipe(end) < 0)
 		ft_error("Cannot open pipe in heredoc", EXIT_FD, shell);
 	pid = fork();
 	if (pid < 0)
 		ft_error("fork in heredoc failed", EXIT_FD, shell);
-	if (!pid)
-		ft_read_stdin(end, limiter, alltkn, shell);
 	if (pid == 0)
 	{
+		close(end[0]);
 		ft_control_signals_heredoc();
-
+		ft_read_stdin(end, limiter, alltkn, shell);
+		exit(EXIT_SUCCESS);
 	}
-	close(end[1]);
-	waitpid(pid, NULL, 0);
-	cmd->in = end[0];
+	ft_heredoc_continuation(shell, pid, &original_config, end);
 }
 
-// void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
-// {
-// 	int				end[2];
-// 	pid_t			pid;
-// 	int				status;
-// 	struct termios	original_termios;
-// 	struct termios	heredoc_termios;
-
-// 	// --- DECLARACIONES CORREGIDAS ---
-// 	// Guardar atributos originales y desactivar ECHOCTL
-// 	tcgetattr(STDIN_FILENO, &original_termios);
-// 	heredoc_termios = original_termios;
-// 	heredoc_termios.c_lflag &= ~ECHOCTL;
-// 	tcsetattr(STDIN_FILENO, TCSANOW, &heredoc_termios);
-// 	if (pipe(end) < 0)
-// 		ft_error("Cannot open pipe in heredoc", EXIT_FD, shell);
-// 	pid = fork();
-// 	if (pid < 0)
-// 		ft_error("fork in heredoc failed", EXIT_FD, shell);
-// 	if (pid == 0) // Proceso Hijo
-// 	{
-// 		// El hijo debe restaurar los termios originales para no afectar su propio estado
-// 		// tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
-// 		ft_control_signals_heredoc();
-// 		ft_read_stdin(end, limiter, alltkn, shell);
-// 	}
-// 	// LÓGICA DEL PADRE
-// 	signal(SIGINT, SIG_IGN);
-// 	signal(SIGQUIT, SIG_IGN);
-// 	close(end[1]);
-// 	waitpid(pid, &status, 0);
-// 	// Restaurar los atributos originales de la terminal en el padre
-// 	tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
-// 	// ft_control_signals_main();
-// 	// --- USO DEL PARÁMETRO 'cmd' PARA CORREGIR EL ERROR ---
-// 	if (WIFEXITED(status) && WEXITSTATUS(status) == 130)
-// 	{
-// 		close(end[0]);
-// 		cmd->in = -1; // Marcar como inválido para que no se ejecute el comando
-// 		shell->exit_status = 130;
-// 	}
-// 	else
-// 	{
-// 		cmd->in = end[0]; // Asignar el pipe de lectura como entrada del comando
-// 	}
-// }

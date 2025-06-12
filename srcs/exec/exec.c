@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/04 11:21:39 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/06/12 09:06:38 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/12 22:06:42 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,13 +73,16 @@ static void	ft_close(t_cmd *all_cmd, t_cmd *cmd)
 
 void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
 {
+	int	exit_status;
+
+	exit_status = shell->exit_status;
 	ft_close(shell->cmds, cmd);
 	if (!ft_dup_files(cmd))
 	{
 		if (cmd->in < 0)
 		{
 			ft_free_shell(shell);
-			exit(EXIT_FD);
+			exit(exit_status);
 		}
 		ft_free_shell(shell);
 		return ;
@@ -112,7 +115,7 @@ void	ft_process(char **env, t_shell *shell)
 		return ;
 	if (!ft_init_process(env, shell))
 		return ;
-	ft_wait_and_set_exit_status(shell);
+	ft_wait_status_child(shell);
 	free(shell->pids);
 	shell->pids = NULL;
 	ft_free_cmds(shell->cmds);

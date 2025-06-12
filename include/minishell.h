@@ -6,19 +6,19 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/30 18:47:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/06 20:33:50 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/12 21:33:01 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef MINISHELL_H
 # define MINISHELL_H
 
-# include "libft.h"
-# include "builtins.h"
-# include "structs.h"
-# include "exit_codes.h"
-# include "parsing.h"
-# include "signals.h"
+// À voir si j’en aurai besoin
+# include <sys/ioctl.h>
+# include <readline/readline.h>
+# include <readline/history.h>
+
+
 # include <limits.h>
 # include <stdio.h>
 # include <unistd.h>
@@ -29,12 +29,14 @@
 # include <sys/wait.h>
 # include <sys/stat.h>
 # include <signal.h>
+# include "libft.h"
+# include "builtins.h"
+# include "structs.h"
+# include "exit_codes.h"
+# include "parsing.h"
+# include "signals.h"
 
-// À voir si j’en aurai besoin
-# include <termios.h>
-# include <sys/ioctl.h>
-#include <readline/readline.h>
-#include <readline/history.h>
+
 
 # define HGRN	"\e[0;92m"
 # define HMAG	"\e[0;95m"

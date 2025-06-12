@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:44:05 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/06 16:48:23 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/12 19:01:39 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,9 @@ void	ft_control_signals_heredoc(void);
 
 void	ft_sigint_handler(int signal);
 void	ft_handler_heredoc(int signal);
-void	ft_wait_and_set_exit_status(t_shell *shell);
+void	ft_signals_ign(void);
+void	ft_wait_status_child(t_shell *shell);
 void	ft_update_exit_status_by_signal(t_shell *shell);
+int		ft_wait_status_heredoc(t_shell *shell, pid_t pid);
 
 #endif
