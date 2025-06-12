@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/04 11:21:39 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/06/06 17:07:45 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/12 09:06:38 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -107,7 +107,7 @@ void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
 void	ft_process(char **env, t_shell *shell)
 {
 	shell->nb_cmds = ft_count_cmds(shell->cmds);
-	shell->pids = malloc(sizeof(pid_t) * shell->nb_cmds);
+	shell->pids = ft_calloc(shell->nb_cmds, sizeof(pid_t));
 	if (!shell->pids)
 		return ;
 	if (!ft_init_process(env, shell))

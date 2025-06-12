@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/10 17:36:08 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/10 18:47:31 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/12 09:31:34 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,24 @@
 
 int	ft_unset_builtins(t_shell *shell)
 {
-	if (!shell->cmds->args[2])
-		return (0);
-	
+	char	**args;
+	t_env	*env_to_delete;
+	int		i;
+	int		error;
 
+	args = shell->cmds->args;
+	i = 1;
+	while (args[i])
+	{
+		env_to_delete = ft_find_env(shell, args[i]);
+		if (!env_to_delete)
+		{
+			i++;
+			continue;
+		}
+		if (env_to_delete)
+			ft_unset_env(env_to_delete, shell);
+		i++;
+	}
+	return (0);
 }

@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:32:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/09 21:10:30 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/12 06:26:00 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,7 +95,7 @@ void	ft_wait_and_set_exit_status(t_shell *shell)
 				shell->exit_status = 128 + sig;
 				if (sig == SIGQUIT && first_signal)
 				{
-					ft_putendl_fd("Quit (core dumped)", STDOUT_FILENO);
+					ft_putendl_fd("Quit", STDOUT_FILENO);
 					first_signal = 0;
 				}
 				if (sig == SIGINT && first_signal)
