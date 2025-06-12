@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/04 11:21:39 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/31 22:28:06 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/06 17:07:45 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -91,6 +91,19 @@ void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
 	}
 }
 
+/**
+ * @brief Handles the complete execution cycle of commands.
+ *
+ * This function initializes process handling by:
+ * - Counting the number of commands in the list.
+ * - Allocating memory for child PIDs.
+ * - Forking and executing each command.
+ * - Waiting for all children and updating the exit status.
+ * - Freeing all commands after execution.
+ *
+ * @param env The environment variables.
+ * @param shell The shell state structure.
+ */
 void	ft_process(char **env, t_shell *shell)
 {
 	shell->nb_cmds = ft_count_cmds(shell->cmds);

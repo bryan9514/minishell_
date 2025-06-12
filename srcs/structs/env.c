@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/07 15:42:29 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/18 10:25:34 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/10 17:43:14 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,7 @@ t_env	*ft_search_env(char *var, t_shell *shell)
 	return (NULL);
 }
 
-void	ft_unset_env(t_env *to_delete, t_shell *shell)
+int	ft_unset_env(t_env *to_delete, t_shell *shell)
 {
 	if (!shell->env->next)
 		shell->env = NULL;
@@ -61,6 +61,7 @@ void	ft_unset_env(t_env *to_delete, t_shell *shell)
 	free(to_delete->var);
 	free(to_delete->value);
 	free(to_delete);
+	return (0);
 }
 
 void	ft_append_env(char *data, t_shell *shell)

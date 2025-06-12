@@ -1,6 +1,0 @@
-{
-   <nombre de la supresión>
-   Memcheck:Leak
-   fun:malloc
-   ...
-}

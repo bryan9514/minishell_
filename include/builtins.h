@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/01 10:18:42 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 15:18:07 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/10 20:18:19 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,13 +58,14 @@ int		ft_check_equal(char *arg);
 t_env	*ft_var_exists(t_env *env, char *arg);
 t_env	*ft_find_env(t_shell *shell, char *var);
 
-/*  export_utils3  */
-
 /*  export  */
 int		ft_concat_env(char *var, char *value, t_env *node);
 int		ft_export_builtins(t_shell *shell);
 
 /*  pwd  */
 int		ft_pwd_builtins(t_cmd *cmd);
+
+/*  unset  */
+int	ft_unset_builtins(t_shell *shell);
 
 #endif

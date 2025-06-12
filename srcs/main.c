@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/01 08:26:31 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/04 20:52:12 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/10 19:59:11 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -134,10 +134,10 @@ int	main(int argc, char **argv, char **env)
 		ft_control_signals_main();
 		line = readline(prompt);
 		free(prompt);
-		ft_update_exit_status_by_signal(shell);
+		// ft_update_exit_status_by_signal(shell);
 		if (!line)
 			break;
-		// ft_printf("%d", shell->exit_status);
+		// printf("DEBUG (main): exit_status = %d.\n", shell->exit_status);
 		ft_handle_line(line, env, shell);
 		free(line);
 	}

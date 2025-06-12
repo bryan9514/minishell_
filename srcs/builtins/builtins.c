@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/29 12:21:11 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/14 14:20:13 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/10 20:16:25 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,8 +48,10 @@ void	ft_exec_builtins(t_cmd *cmd, t_shell *shell)
 		shell->exit_status = ft_pwd_builtins(cmd);
 	else if (!ft_strcmp(cmd->args[0], "env"))
 		shell->exit_status = ft_env_builtins(cmd, shell->env);
-	else if (!ft_strcmp(cmd->args[0], "exit"))
-		ft_exit_builtins(cmd, shell);
 	else if (!ft_strcmp(cmd->args[0], "export"))
-		ft_export_builtins(shell);
+		shell->exit_status = ft_export_builtins(shell);
+	else if (!ft_strcmp(cmd->args[0], "unset"))
+		shell->exit_status = ft_unset_builtins(shell);
+	else if (!ft_strcmp(cmd->args[0], "exit"))
+		ft_exit_builtins(cmd, shell); // actualiza dentro de la funcion
 }

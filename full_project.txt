@@ -588,7 +588,7 @@ void	ft_parse(char *line, t_shell *shell)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/24 17:23:25 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/31 19:16:52 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/08 19:01:29 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -641,7 +641,6 @@ static void	ft_read_stdin(int end[2], char *limiter, t_token *a, t_shell *shl)
 	char	*line;
 	int		len_line;
 
-	ft_control_signals_heredoc();
 	close(end[0]);
 	write(1, "here_doc> ", 10);
 	line = ft_read_line(STDIN_FILENO);
@@ -665,22 +664,128 @@ static void	ft_read_stdin(int end[2], char *limiter, t_token *a, t_shell *shl)
 	exit(EXIT_FAILURE);
 }
 
-void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
-{
-	pid_t	pid;
-	int		end[2];
+// void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
+// {
+// 	pid_t	pid;
+// 	int		end[2];
 
-	if (pipe(end) < 0)
-		ft_error("Cannot open pipe in heredoc", EXIT_FD, shell);
-	pid = fork();
-	if (pid < 0)
-		ft_error("fork in heredoc failed", EXIT_FD, shell);
-	if (!pid)
-		ft_read_stdin(end, limiter, alltkn, shell);
-	close(end[1]);
-	waitpid(pid, NULL, 0);
-	cmd->in = end[0];
+// 	if (pipe(end) < 0)
+// 		ft_error("Cannot open pipe in heredoc", EXIT_FD, shell);
+// 	pid = fork();
+// 	if (pid < 0)
+// 		ft_error("fork in heredoc failed", EXIT_FD, shell);
+// 	if (!pid)
+// 		ft_read_stdin(end, limiter, alltkn, shell);
+// 	close(end[1]);
+// 	waitpid(pid, NULL, 0);
+// 	cmd->in = end[0];
+// }
+
+// void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
+// {
+// 	pid_t	pid;
+// 	int		end[2];
+// 	int		status;
+
+// 	if (pipe(end) < 0)
+// 		ft_error("Cannot open pipe in heredoc", EXIT_FD, shell);
+// 	pid = fork();
+// 	if (pid < 0)
+// 		ft_error("fork in heredoc failed", EXIT_FD, shell);
+
+// 	if (pid == 0) // Proceso Hijo
+// 	{
+// 		// El hijo configura su propio manejador que llama a exit(130)
+// 		ft_control_signals_heredoc();
+// 		ft_read_stdin(end, limiter, alltkn, shell);
+			// ft_read_stdin debe llamar a exit()
+// 	}
+
+// 	// ---- LÓGICA DEL PADRE ----
+
+// 	// 1. EL PADRE DEBE IGNORAR LA SEÑAL MIENTRAS EL HIJO TRABAJA
+// 	signal(SIGINT, SIG_IGN);
+// 	signal(SIGQUIT, SIG_IGN);
+
+// 	// 2. AHORA ESPERA TRANQUILAMENTE
+// 	close(end[1]);
+// 	waitpid(pid, &status, 0);
+
+// 	// 3. DESPUÉS DE ESPERAR, RESTAURA EL MANEJADOR INTERACTIVO NORMAL
+// 	ft_control_signals_main();
+
+// 	// 4. COMPRUEBA CÓMO TERMINÓ EL HIJO
+// 	if (WIFEXITED(status) && WEXITSTATUS(status) == 130)
+// 	{
+// 		// Heredoc cancelado por Ctrl+C
+// 		close(end[0]);
+// 		cmd->in = -1; // Marcar como inválido para que no se ejecute el comando
+// 		shell->exit_status = 130;
+// 	}
+// 	else
+// 	{
+// 		// Heredoc terminado normalmente (con el delimitador o Ctrl+D)
+// 		cmd->in = end[0];
+// 	}
+// }
+
+#include <termios.h>
+
+void    ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
+{
+    // --- DECLARACIONES CORREGIDAS ---
+    int             end[2];
+    pid_t           pid;
+    int             status;
+    struct termios  original_termios;
+    struct termios  heredoc_termios;
+
+    // Guardar atributos originales y desactivar ECHOCTL
+    tcgetattr(STDIN_FILENO, &original_termios);
+    heredoc_termios = original_termios;
+    heredoc_termios.c_lflag &= ~ECHOCTL;
+    tcsetattr(STDIN_FILENO, TCSANOW, &heredoc_termios);
+
+    if (pipe(end) < 0)
+        ft_error("Cannot open pipe in heredoc", EXIT_FD, shell);
+
+    pid = fork();
+    if (pid < 0)
+        ft_error("fork in heredoc failed", EXIT_FD, shell);
+
+    if (pid == 0) // Proceso Hijo
+    {
+        // El hijo debe restaurar los termios originales para no afectar su propio estado
+        // tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
+        ft_control_signals_heredoc();
+        ft_read_stdin(end, limiter, alltkn, shell);
+    }
+
+    // LÓGICA DEL PADRE
+    signal(SIGINT, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
+
+    close(end[1]);
+    waitpid(pid, &status, 0);
+
+    // Restaurar los atributos originales de la terminal en el padre
+    tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
+    ft_control_signals_main();
+
+    // --- USO DEL PARÁMETRO 'cmd' PARA CORREGIR EL ERROR ---
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 130)
+    {
+
+        close(end[0]);
+        cmd->in = -1; // Marcar como inválido para que no se ejecute el comando
+        shell->exit_status = 130;
+    }
+    else
+    {
+        cmd->in = end[0]; // Asignar el pipe de lectura como entrada del comando
+    }
 }
+
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -780,7 +885,7 @@ void	ft_free_shell(t_shell *shell)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/29 16:12:14 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/31 23:28:24 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/07 18:39:03 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -788,8 +893,7 @@ void	ft_free_shell(t_shell *shell)
 
 void	ft_control_signals_main(void)
 {
-	if (g_signal != HEREDOC_SIGINT)
-		g_signal = MAIN_SIGINT;
+	g_signal = MAIN_SIGINT;
 	signal(SIGINT, ft_sigint_handler);
 	signal(SIGQUIT, SIG_IGN);
 }
@@ -803,8 +907,10 @@ void	ft_control_signals_child(void)
 void	ft_control_signals_heredoc(void)
 {
 	g_signal = HEREDOC_SIGINT;
-	signal(SIGINT, ft_sigint_handler);
+	signal(SIGINT, ft_handler_heredoc);
+	signal(SIGQUIT, SIG_IGN);
 }
+
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -813,7 +919,7 @@ void	ft_control_signals_heredoc(void)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:32:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/31 23:29:07 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/08 19:02:42 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -822,31 +928,75 @@ void	ft_control_signals_heredoc(void)
 void	ft_sigint_handler(int signal)
 {
 	(void)signal;
-	if (g_signal == MAIN_SIGINT)
-	{
-		write(STDOUT_FILENO, "\n", 1);
-		rl_replace_line("", 0);
-		rl_on_new_line();
-		rl_redisplay();
-	}
-	else if (g_signal == HEREDOC_SIGINT)
-	{
-		write(STDOUT_FILENO, "\n", 1);
-		rl_replace_line("", 0);
-		rl_on_new_line();
-		ioctl(STDIN_FILENO, TIOCSTI, "\n");
-	}
-	else if (g_signal == EXEC_SIGINT)
-		write(STDOUT_FILENO, "\n", 1);
+	write(STDOUT_FILENO, "\n", 1);
+	rl_replace_line("", 0);
+	rl_on_new_line();
+	rl_redisplay();
 }
+
+void	ft_handler_heredoc(int signal)
+{
+	(void)signal;
+	write(1, "^C", 2);
+	write(1, "\n", 1); // Para mostrar nueva línea como bash
+	exit(130); // Código estándar para Ctrl+C
+}
+
+
+/**
+ * @brief Waits for all child processes and sets the appropriate exit status.
+ *
+ * For each child process:
+ * - If terminated by signal, sets `exit_status = 128 + signal`.
+ * - If terminated normally, sets `exit_status = exit code`.
+ * - Prints "Quit (core dumped)" if the child received SIGQUIT.
+ *
+ * This ensures `$?` behaves like in bash.
+ *
+ * @param shell The shell state structure.
+ */
+// void	ft_wait_and_set_exit_status(t_shell *shell)
+// {
+// 	int	i;
+// 	int	status;
+// 	int	sig;
+
+// 	i = 0;
+// 	while (i < shell->nb_cmds)
+// 	{
+// 		if (shell->pids[i] > 0)
+// 		{
+// 			waitpid(shell->pids[i], &status, 0);
+// 			if (WIFSIGNALED(status))
+// 			{
+// 				sig = WTERMSIG(status);
+// 				shell->exit_status = 128 + sig;
+// 				if (sig == SIGQUIT)
+// 					ft_putendl_fd("Quit (core dumped)", STDOUT_FILENO);
+// 				// if (sig == SIGINT && g_signal != MAIN_SIGINT)
+// 				// 	write(STDOUT_FILENO, "\n", 1);
+// 			}
+// 			else if (WIFEXITED(status))
+// 				shell->exit_status = WEXITSTATUS(status);
+// 		}
+// 		i++;
+// 	}
+// }
 
 void	ft_wait_and_set_exit_status(t_shell *shell)
 {
 	int	i;
 	int	status;
 	int	sig;
+	int	first_signal; // Variable para imprimir solo una nueva línea
 
 	i = 0;
+	first_signal = 1;
+
+	// 1. ANTES de esperar, el padre se configura para IGNORAR las señales.
+	signal(SIGINT, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+
 	while (i < shell->nb_cmds)
 	{
 		if (shell->pids[i] > 0)
@@ -856,30 +1006,35 @@ void	ft_wait_and_set_exit_status(t_shell *shell)
 			{
 				sig = WTERMSIG(status);
 				shell->exit_status = 128 + sig;
-				if (sig == SIGQUIT)
+				if (sig == SIGQUIT && first_signal)
+				{
 					ft_putendl_fd("Quit (core dumped)", STDOUT_FILENO);
+					first_signal = 0;
+				}
+				if (sig == SIGINT && first_signal)
+				{
+					write(STDOUT_FILENO, "\n", 1);
+					first_signal = 0;
+				}
 			}
 			else if (WIFEXITED(status))
 				shell->exit_status = WEXITSTATUS(status);
 		}
 		i++;
 	}
+
+	// 2. DESPUÉS de esperar, el padre restaura los manejadores interactivos.
+
 }
+
 
 void	ft_update_exit_status_by_signal(t_shell *shell)
 {
-	if (g_signal)
-	{
+	if (g_signal == MAIN_SIGINT || g_signal == HEREDOC_SIGINT)
 		shell->exit_status = 130;
-		g_signal = 0;
-	}
-	// if (g_signal == MAIN_SIGINT)
-	// 	shell->exit_status = 130;
-	// else if (g_signal == EXEC_SIGQUIT)
-	// 	shell->exit_status = 131;
-	// else if (g_signal == HEREDOC_SIGINT)
-	// 	shell->exit_status = 130;
-	// g_signal = NO_SIGNAL;
+	else if (g_signal == EXEC_SIGQUIT)
+		shell->exit_status = 131;
+	g_signal = NO_SIGNAL;
 }
 /* ************************************************************************** */
 /*                                                                            */
@@ -889,7 +1044,7 @@ void	ft_update_exit_status_by_signal(t_shell *shell)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/01 08:26:31 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/31 23:28:01 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/06 22:40:51 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1020,6 +1175,7 @@ int	main(int argc, char **argv, char **env)
 		ft_update_exit_status_by_signal(shell);
 		if (!line)
 			break;
+		// ft_printf("%d", shell->exit_status);
 		ft_handle_line(line, env, shell);
 		free(line);
 	}
@@ -1873,7 +2029,7 @@ int	ft_cd_path(char *arg, t_shell *shell)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/04 11:21:39 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/31 22:28:06 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/06 17:07:45 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1958,6 +2114,19 @@ void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
 	}
 }
 
+/**
+ * @brief Handles the complete execution cycle of commands.
+ *
+ * This function initializes process handling by:
+ * - Counting the number of commands in the list.
+ * - Allocating memory for child PIDs.
+ * - Forking and executing each command.
+ * - Waiting for all children and updating the exit status.
+ * - Freeing all commands after execution.
+ *
+ * @param env The environment variables.
+ * @param shell The shell state structure.
+ */
 void	ft_process(char **env, t_shell *shell)
 {
 	shell->nb_cmds = ft_count_cmds(shell->cmds);
@@ -1980,12 +2149,26 @@ void	ft_process(char **env, t_shell *shell)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/29 21:25:01 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/31 21:03:32 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/06 17:09:02 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
+/**
+ * @brief Forks and launches each command that requires a new process.
+ *
+ * For each command:
+ * - If the command is not a builtin that runs without fork,
+ *   it forks a new process.
+ * - In the child, it installs execution signal handlers and
+ *   runs the command.
+ * - PIDs of children are stored for later `waitpid` calls.
+ *
+ * @param env The environment variables.
+ * @param shell The shell state structure.
+ * @return 1 on success, 0 on failure.
+ */
 int	ft_init_process(char **env, t_shell *shell)
 {
 	int		i;
@@ -2012,6 +2195,15 @@ int	ft_init_process(char **env, t_shell *shell)
 	}
 	return (1);
 }
+
+/**
+ * @brief Counts the number of commands in the command list.
+ *
+ * Useful to determine how many child processes will be created.
+ *
+ * @param cmds Pointer to the first command.
+ * @return Number of commands.
+ */
 
 int	ft_count_cmds(t_cmd *cmds)
 {
@@ -2740,7 +2932,7 @@ void	ft_free_shell(t_shell *shell);
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:44:05 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/31 20:59:49 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/06 16:48:23 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -2748,11 +2940,13 @@ void	ft_free_shell(t_shell *shell);
 # define SIGNALS_H
 
 # include "minishell.h"
+
 typedef enum e_context
 {
 	NO_SIGNAL,
 	MAIN_SIGINT,
 	HEREDOC_SIGINT,
+	HEREDOC_INTERRUPTED,
 	EXEC_SIGINT,
 	EXEC_SIGQUIT
 }		t_context;
@@ -2762,6 +2956,7 @@ void	ft_control_signals_child(void);
 void	ft_control_signals_heredoc(void);
 
 void	ft_sigint_handler(int signal);
+void	ft_handler_heredoc(int signal);
 void	ft_wait_and_set_exit_status(t_shell *shell);
 void	ft_update_exit_status_by_signal(t_shell *shell);
 
@@ -2774,7 +2969,7 @@ void	ft_update_exit_status_by_signal(t_shell *shell);
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/30 18:47:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/29 22:12:19 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/06 20:33:50 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
