@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/29 12:21:11 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/10 20:16:25 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/13 07:20:27 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,5 +53,5 @@ void	ft_exec_builtins(t_cmd *cmd, t_shell *shell)
 	else if (!ft_strcmp(cmd->args[0], "unset"))
 		shell->exit_status = ft_unset_builtins(shell);
 	else if (!ft_strcmp(cmd->args[0], "exit"))
-		ft_exit_builtins(cmd, shell); // actualiza dentro de la funcion
+		ft_exit_builtins(cmd, shell);
 }

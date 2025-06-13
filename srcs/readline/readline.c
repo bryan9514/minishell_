@@ -12,10 +12,10 @@
 
 #include "minishell.h"
 
-static struct termios   ft_no_raw_and_echo_mode(void)
+static struct termios	ft_no_raw_and_echo_mode(void)
 {
-	struct termios  oldt;
-	struct termios  newt;
+	struct termios	oldt;
+	struct termios	newt;
 
 	tcgetattr(STDIN_FILENO, &oldt);
 	newt = oldt;
@@ -51,28 +51,28 @@ static char	*ft_join_to_line(unsigned char seq[4], char *line, t_shell *shell)
 	return (malloc_seq);
 }
 
-char    *ft_readline(t_shell *shell)
+char	*ft_readline(t_shell *shell)
 {
-	struct termios  oldt;
+	struct termios	oldt;
 	unsigned char	seq[4];
 	char			*line;
 	int				swtch;
-	
+
 	line = NULL;
 	oldt = ft_no_raw_and_echo_mode();
 	ft_bzero(seq, sizeof(seq));
-    while (read(STDIN_FILENO, &seq[0], 1) == 1 && seq[0] != '\n')
+	while (read(STDIN_FILENO, &seq[0], 1) == 1 && seq[0] != '\n')
 	{
 		swtch = ft_switch_seq(seq, &line, shell);
 		if (swtch == -1)
-			break;
-        if (!swtch)
+			break ;
+		if (!swtch)
 		{
 			line = ft_join_to_line(seq, line, shell);
 			ft_printf("%s", seq);
-		}	
+		}
 		ft_bzero(seq, sizeof(seq));
-    }
+	}
 	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 	ft_printf("\n");
 	if (!line && seq[0] == '\n')

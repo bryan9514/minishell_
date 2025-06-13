@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/07 17:38:56 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/10 20:15:34 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/13 07:21:12 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -75,13 +75,13 @@ static int	is_long_overflow(char *arg)
 	if (arg[0] == '-')
 	{
 		if (size > 20 || (size == 20 && \
-		ft_strcmp(arg, "-9223372036854775808") > 0))
+ft_strcmp(arg, "-9223372036854775808") > 0))
 			return (1);
 	}
 	else
 	{
 		if (size > 19 || (size == 19 && \
-		ft_strcmp(arg, "9223372036854775807") > 0))
+ft_strcmp(arg, "9223372036854775807") > 0))
 			return (1);
 	}
 	return (0);

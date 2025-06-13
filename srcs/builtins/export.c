@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/12 10:17:11 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/10 20:15:44 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/13 07:21:54 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,7 +63,7 @@ int	ft_concat_env(char *var, char *value, t_env *node)
 }
 
 static void	ft_update_or_append_env(t_shell *shell, int equal, \
-	char *var, char *value)
+char *var, char *value)
 {
 	t_env	*existing;
 
@@ -110,10 +110,10 @@ int	ft_export_builtins(t_shell *shell)
 	if (!shell->cmds->args[1])
 		return (ft_printf_export(shell->env));
 	if (ft_parsing_export_arg(shell->cmds->args[1]) || \
-		(shell->cmds->args[1] && shell->cmds->args[2]))
+(shell->cmds->args[1] && shell->cmds->args[2]))
 	{
 		ft_export_error_msj(shell->cmds->args[1], \
-		"not a valid identifier");
+"not a valid identifier");
 		return (1);
 	}
 	if (ft_export_with_arg(shell, shell->cmds->args))

@@ -6,19 +6,16 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/30 18:47:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/12 21:33:01 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/13 08:14:09 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef MINISHELL_H
 # define MINISHELL_H
 
-// À voir si j’en aurai besoin
 # include <sys/ioctl.h>
 # include <readline/readline.h>
 # include <readline/history.h>
-
-
 # include <limits.h>
 # include <stdio.h>
 # include <unistd.h>
@@ -36,11 +33,8 @@
 # include "parsing.h"
 # include "signals.h"
 
-
-
 # define HGRN	"\e[0;92m"
 # define HMAG	"\e[0;95m"
-
 # define BLACK	"\033[0;30m"
 # define RED	"\033[0;31m"
 # define GREEN	"\033[0;32m"
@@ -56,7 +50,6 @@
 extern volatile sig_atomic_t	g_signal;
 
 void	printbanner(void);
-//void	ft_print_prompt(t_shell *shell);
 char	*ft_print_prompt(t_shell *shell);
 char	*ft_readline(t_shell *shell);
 void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell);

@@ -94,6 +94,1282 @@ norm	:
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
+/*   banner.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/04/28 07:59:58 by brturcio          #+#    #+#             */
+/*   Updated: 2025/05/03 10:31:37 by yel-mens         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+void	printbanner(void)
+{
+	ft_printf (RED"	███╗   ███╗██╗███╗   ██╗██╗"
+		"███████╗██╗  ██╗███████╗██╗     ██╗\n"
+		"	████╗ ████║██║████╗  ██║██║██╔════╝"
+		"██║  ██║██╔════╝██║     ██║\n"
+		"	██╔████╔██║██║██╔██╗ ██║██║"
+		"███████╗███████║█████╗  ██║     ██║\n"
+		"	██║╚██╔╝██║██║██║╚██╗██║██║"
+		"╚════██║██╔══██║██╔══╝  ██║     ██║\n"
+		"	██║ ╚═╝ ██║██║██║ ╚████║██║███████║"
+		"██║  ██║███████╗███████╗███████╗\n"
+		"	╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝╚══════╝"
+		"╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝\n"
+		"\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n"RST);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   builtins.c                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/04/29 12:21:11 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:20:27 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+int	ft_is_builtin(char *arg)
+{
+	if (!ft_strcmp(arg, "echo") || !ft_strcmp(arg, "cd")
+		|| !ft_strcmp(arg, "pwd") || !ft_strcmp(arg, "export")
+		|| !ft_strcmp(arg, "unset") || !ft_strcmp(arg, "env")
+		|| !ft_strcmp(arg, "exit"))
+		return (1);
+	return (0);
+}
+
+int	ft_is_builtin_no_fork(char *arg)
+{
+	if (!ft_strcmp(arg, "cd") || !ft_strcmp(arg, "export")
+		|| !ft_strcmp(arg, "unset") || !ft_strcmp(arg, "exit"))
+		return (1);
+	return (0);
+}
+
+int	ft_no_fork(t_cmd *cmd, t_shell *shell)
+{
+	if (!(!cmd->next && cmd->args && ft_is_builtin_no_fork(cmd->args[0])))
+		return (0);
+	ft_exec_builtins(cmd, shell);
+	return (1);
+}
+
+void	ft_exec_builtins(t_cmd *cmd, t_shell *shell)
+{
+	if (!ft_strcmp(cmd->args[0], "echo"))
+		shell->exit_status = ft_echo_builtins(cmd);
+	else if (!ft_strcmp(cmd->args[0], "cd"))
+		shell->exit_status = ft_cd_builtins(cmd, shell);
+	else if (!ft_strcmp(cmd->args[0], "pwd"))
+		shell->exit_status = ft_pwd_builtins(cmd);
+	else if (!ft_strcmp(cmd->args[0], "env"))
+		shell->exit_status = ft_env_builtins(cmd, shell->env);
+	else if (!ft_strcmp(cmd->args[0], "export"))
+		shell->exit_status = ft_export_builtins(shell);
+	else if (!ft_strcmp(cmd->args[0], "unset"))
+		shell->exit_status = ft_unset_builtins(shell);
+	else if (!ft_strcmp(cmd->args[0], "exit"))
+		ft_exit_builtins(cmd, shell);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   cd.c                                               :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/05 10:57:58 by brturcio          #+#    #+#             */
+/*   Updated: 2025/05/15 20:26:25 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+static int	ft_cd_home(t_shell *shell)
+{
+	char	*home;
+	char	*oldpwd;
+	char	cwd[PATH_MAX];
+
+	home = ft_get_val("HOME", shell);
+	if (!home)
+	{
+		ft_putstr_fd("minishell: cd: HOME not set\n", STDERR_FILENO);
+		return (1);
+	}
+	oldpwd = ft_get_val("PWD", shell);
+	if (chdir(home) == -1)
+	{
+		perror("minishell: cd");
+		free(home);
+		free(oldpwd);
+		return (1);
+	}
+	if (oldpwd)
+		ft_update_env("OLDPWD", oldpwd, shell);
+	if (getcwd(cwd, PATH_MAX))
+		ft_update_env("PWD", cwd, shell);
+	free(home);
+	free(oldpwd);
+	return (0);
+}
+
+static int	ft_cd_oldpwd2(char *oldpwd, char *pwd, t_shell *shell)
+{
+	char	cwd[PATH_MAX];
+
+	ft_putstr_fd(oldpwd, STDOUT_FILENO);
+	ft_putstr_fd("\n", STDOUT_FILENO);
+	if (pwd)
+		ft_update_env("OLDPWD", pwd, shell);
+	if (getcwd(cwd, PATH_MAX))
+		ft_update_env("PWD", cwd, shell);
+	free(oldpwd);
+	free(pwd);
+	return (0);
+}
+
+static int	ft_cd_oldpwd(t_shell *shell)
+{
+	char	*oldpwd;
+	char	*pwd;
+
+	oldpwd = ft_get_val("OLDPWD", shell);
+	if (!oldpwd)
+	{
+		ft_putstr_fd("minishell: cd: OLDPWD not set\n", STDERR_FILENO);
+		return (1);
+	}
+	pwd = ft_get_val("PWD", shell);
+	if (chdir(oldpwd) == -1)
+	{
+		perror ("minishell : cd -");
+		free(pwd);
+		free(oldpwd);
+		return (1);
+	}
+	return (ft_cd_oldpwd2(oldpwd, pwd, shell));
+}
+
+int	ft_cd_builtins(t_cmd *cmd, t_shell *shell)
+{
+	if (cmd->args[1] && cmd->args[2])
+	{
+		ft_putstr_fd("minishell: cd: too many arguments\n", STDERR_FILENO);
+		shell->exit_status = 1;
+		return (1);
+	}
+	if (!cmd->args[1] || ft_strncmp(cmd->args[1], "~", 2) == 0)
+		return (ft_cd_home(shell));
+	if (ft_strncmp(cmd->args[1], "-", 2) == 0)
+		return (ft_cd_oldpwd(shell));
+	return (ft_cd_path(cmd->args[1], shell));
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   cd_path.c                                          :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/06 14:12:28 by brturcio          #+#    #+#             */
+/*   Updated: 2025/05/09 17:29:26 by yel-mens         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+static int	ft_check_access(char *arg, char *pwd)
+{
+	if (access(arg, F_OK) == -1)
+	{
+		ft_putstr_fd("minishell: cd: ", STDERR_FILENO);
+		ft_putstr_fd(arg, STDERR_FILENO);
+		ft_putstr_fd(": No such file or directory\n", STDERR_FILENO);
+		free(pwd);
+		return (1);
+	}
+	return (0);
+}
+
+static int	check_directory(char *arg)
+{
+	struct stat	info;
+
+	if (stat(arg, &info) == -1)
+	{
+		perror ("stat");
+		return (1);
+	}
+	if (!S_ISDIR(info.st_mode))
+	{
+		ft_putstr_fd("minishell: cd: ", STDERR_FILENO);
+		ft_putstr_fd(arg, STDERR_FILENO);
+		ft_putstr_fd(": Not a directory\n", STDERR_FILENO);
+		return (1);
+	}
+	return (0);
+}
+
+int	ft_cd_path(char *arg, t_shell *shell)
+{
+	char	cwd[PATH_MAX];
+	char	*pwd;
+
+	pwd = ft_get_val("PWD", shell);
+	if (ft_check_access(arg, pwd))
+		return (1);
+	if (check_directory(arg))
+	{
+		free(pwd);
+		return (1);
+	}
+	if (chdir(arg) == -1)
+	{
+		perror("minishell: cd");
+		free(pwd);
+		return (1);
+	}
+	if (pwd)
+		ft_update_env("OLDPWD", pwd, shell);
+	if (getcwd(cwd, PATH_MAX))
+		ft_update_env("PWD", cwd, shell);
+	free(pwd);
+	return (0);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   echo.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/01 13:40:32 by brturcio          #+#    #+#             */
+/*   Updated: 2025/05/09 17:27:30 by yel-mens         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+static int	ft_is_newline(char *str)
+{
+	int	i;
+
+	if (str[0] != '-')
+		return (1);
+	i = 1;
+	if (str[i] == '\0')
+		return (1);
+	while (str[i])
+	{
+		if (str[i] != 'n')
+			return (1);
+		i++;
+	}
+	return (0);
+}
+
+static int	ft_echo_printf(char **args)
+{
+	int	i;
+
+	i = 0;
+	while (args[i])
+	{
+		ft_putstr_fd(args[i], 1);
+		if (args[i + 1])
+			ft_putstr_fd(" ", 1);
+		i++;
+	}
+	return (0);
+}
+
+int	ft_echo_builtins(t_cmd *cmd)
+{
+	int	i;
+	int	newline;
+
+	i = 1;
+	newline = 1;
+	if (!cmd || !cmd->args || !cmd->args[0])
+		return (1);
+	while (cmd->args[i] && !ft_is_newline(cmd->args[i]))
+	{
+		newline = 0;
+		i++;
+	}
+	ft_echo_printf(cmd->args + i);
+	if (newline)
+		ft_putstr_fd("\n", 1);
+	return (0);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   env.c                                              :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/04 13:52:59 by brturcio          #+#    #+#             */
+/*   Updated: 2025/05/05 17:59:28 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+int	ft_env_builtins(t_cmd *cmd, t_env *env)
+{
+	(void)cmd;
+	while (env)
+	{
+		if (env->data && ft_strchr(env->data, '='))
+			ft_putendl_fd(env->data, 1);
+		env = env->next;
+	}
+	return (0);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   env_utils.c                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/05 15:00:01 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:30:46 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+char	*ft_get_val(char *var, t_shell *shell)
+{
+	t_env	*env;
+
+	env = ft_var_exists(shell->env, var);
+	if (!env || !env->data)
+		return (NULL);
+	return (ft_strdup(env->value));
+}
+
+char	*build_new_env(char *var, char *data)
+{
+	char	*tmp;
+	char	*result;
+
+	tmp = ft_strjoin(var, "=");
+	if (!tmp)
+		return (NULL);
+	result = ft_strjoin(tmp, data);
+	free(tmp);
+	return (result);
+}
+
+char	*ft_update_env(char *var, char *data, t_shell *shell)
+{
+	t_env	*env;
+	char	*new_data;
+
+	env = ft_var_exists(shell->env, var);
+	if (!env)
+	{
+		new_data = build_new_env(var, data);
+		if (!new_data)
+			return (NULL);
+		ft_append_env(ft_strdup(new_data), shell);
+		return (new_data);
+	}
+	new_data = build_new_env(var, data);
+	if (!new_data)
+		return (NULL);
+	free(env->data);
+	free(env->value);
+	free(env->var);
+	env->data = new_data;
+	env->var = ft_extract_var(new_data);
+	env->value = ft_extract_value(new_data);
+	return (env->data);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   exit.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/07 17:38:56 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:21:12 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+static void	ft_exit_error_msj(int exit, char *arg, char *msj)
+{
+	(void)exit;
+	ft_putstr_fd("minishell: exit: ", STDERR_FILENO);
+	if (arg)
+	{
+		ft_putstr_fd(arg, STDERR_FILENO);
+		ft_putstr_fd(": ", STDERR_FILENO);
+	}
+	if (msj)
+		ft_putstr_fd(msj, STDERR_FILENO);
+}
+
+static int	ft_is_number(char *arg)
+{
+	int	i;
+	int	num;
+
+	i = 0;
+	num = 0;
+	if (arg[0] == '-' || arg[0] == '+')
+		i++;
+	while (ft_isdigit(arg[i]))
+		i++;
+	if (arg[i] == '\0')
+		num = 1;
+	return (num);
+}
+
+static int	ft_check_exit_path(t_cmd *cmd, t_shell *shell)
+{
+	if (!ft_is_number(cmd->args[1]) && !cmd->args[2])
+	{
+		ft_exit_error_msj(1, cmd->args[1], "numeric argument required\n");
+		ft_free_shell(shell);
+		exit (2);
+	}
+	if (cmd->args[1] && cmd->args[2])
+	{
+		if (!ft_is_number(cmd->args[1]))
+		{
+			ft_exit_error_msj(1, cmd->args[1], "numeric argument required\n");
+			ft_free_shell(shell);
+			exit (2);
+		}
+		else
+		{
+			ft_exit_error_msj(1, NULL, "too many arguments\n");
+			shell->exit_status = 1;
+			return (1);
+		}
+	}
+	return (0);
+}
+
+static int	is_long_overflow(char *arg)
+{
+	int	size;
+
+	size = ft_strlen(arg);
+	if (arg[0] == '-')
+	{
+		if (size > 20 || (size == 20 && \
+ft_strcmp(arg, "-9223372036854775808") > 0))
+			return (1);
+	}
+	else
+	{
+		if (size > 19 || (size == 19 && \
+ft_strcmp(arg, "9223372036854775807") > 0))
+			return (1);
+	}
+	return (0);
+}
+
+void	ft_exit_builtins(t_cmd *cmd, t_shell *shell)
+{
+	int	status;
+
+	status = shell->exit_status;
+	if (isatty(STDIN_FILENO))
+		ft_putstr_fd("exit\n", STDERR_FILENO);
+	if (!cmd->args[1])
+	{
+		ft_free_shell(shell);
+		exit(status);
+	}
+	if (ft_check_exit_path(cmd, shell))
+		return ;
+	if (is_long_overflow(cmd->args[1]))
+	{
+		ft_exit_error_msj(1, cmd->args[1], "numeric argument required\n");
+		ft_free_shell(shell);
+		exit(2);
+	}
+	status = ft_atol (cmd->args[1]);
+	ft_free_shell(shell);
+	exit((unsigned char)status);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   export.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/12 10:17:11 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:21:54 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+static int	ft_printf_export(t_env *env)
+{
+	t_env	*env_copy;
+	t_env	*tmp;
+
+	env_copy = ft_cread_env_copy(env);
+	if (!env_copy)
+		return (1);
+	ft_sort_env_copy(env_copy);
+	tmp = env_copy;
+	while (tmp)
+	{
+		ft_putstr_fd("declare -x ", STDOUT_FILENO);
+		ft_putstr_fd(tmp->var, STDOUT_FILENO);
+		if (ft_strchr(tmp->data, '='))
+		{
+			ft_putstr_fd("=\"", STDOUT_FILENO);
+			ft_putstr_fd(tmp->value, STDOUT_FILENO);
+			ft_putstr_fd("\"", STDOUT_FILENO);
+		}
+		ft_putstr_fd("\n", STDOUT_FILENO);
+		tmp = tmp->next;
+	}
+	ft_free_env(env_copy);
+	return (0);
+}
+
+int	ft_concat_env(char *var, char *value, t_env *node)
+{
+	char	*joined;
+	char	*new_data;
+
+	if (!node || !value || !node->value)
+		return (1);
+	joined = ft_strjoin(node->value, value);
+	if (!joined)
+		return (1);
+	new_data = build_new_env(var, joined);
+	free(joined);
+	if (!new_data)
+		return (1);
+	free(node->data);
+	free(node->value);
+	free(node->var);
+	node->data = new_data;
+	node->var = ft_extract_var(new_data);
+	node->value = ft_extract_value(new_data);
+	return (0);
+}
+
+static void	ft_update_or_append_env(t_shell *shell, int equal, \
+char *var, char *value)
+{
+	t_env	*existing;
+
+	existing = ft_var_exists(shell->env, var);
+	if (existing)
+	{
+		if (equal == 1)
+			ft_update_env(var, value, shell);
+		else if (equal == 2)
+			ft_concat_env(var, value, existing);
+	}
+	else
+	{
+		if (equal)
+			ft_append_env(build_new_env(var, value), shell);
+		else
+			ft_append_env(ft_strdup(var), shell);
+	}
+}
+
+static int	ft_export_with_arg(t_shell *shell, char **args)
+{
+	int		equal;
+	char	*var;
+	char	*value;
+
+	equal = ft_check_equal(args[1]);
+	var = ft_extract_var(args[1]);
+	value = ft_extract_value(args[1]);
+	if (!var || !value)
+	{
+		free(var);
+		free(value);
+		return (1);
+	}
+	ft_update_or_append_env(shell, equal, var, value);
+	free(var);
+	free(value);
+	return (0);
+}
+
+int	ft_export_builtins(t_shell *shell)
+{
+	if (!shell->cmds->args[1])
+		return (ft_printf_export(shell->env));
+	if (ft_parsing_export_arg(shell->cmds->args[1]) || \
+(shell->cmds->args[1] && shell->cmds->args[2]))
+	{
+		ft_export_error_msj(shell->cmds->args[1], \
+"not a valid identifier");
+		return (1);
+	}
+	if (ft_export_with_arg(shell, shell->cmds->args))
+		return (1);
+	return (0);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   export_utils.c                                     :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/12 11:37:00 by brturcio          #+#    #+#             */
+/*   Updated: 2025/05/20 15:47:17 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+static t_env	*ft_lstnew_env(t_env *content)
+{
+	t_env	*cont;
+
+	cont = malloc(sizeof(t_env));
+	if (!cont)
+		return (NULL);
+	cont->data = ft_strdup(content->data);
+	if (!cont->data)
+	{
+		free(cont);
+		return (NULL);
+	}
+	cont->var = ft_extract_var(cont->data);
+	cont->value = ft_extract_value(cont->data);
+	cont->exporte = content->exporte;
+	cont->next = NULL;
+	cont->prev = NULL;
+	return (cont);
+}
+
+static void	ft_lstadd_back_env(t_env **lst, t_env *new)
+{
+	t_env	*last_node;
+
+	if (!*lst)
+		*lst = new;
+	else
+	{
+		last_node = *lst;
+		while (last_node->next != NULL)
+			last_node = last_node->next;
+		last_node->next = new;
+		new->prev = last_node;
+	}
+}
+
+t_env	*ft_cread_env_copy(t_env *env)
+{
+	t_env	*env_copy;
+	t_env	*new_nodo;
+
+	env_copy = NULL;
+	new_nodo = NULL;
+	while (env)
+	{
+		new_nodo = ft_lstnew_env(env);
+		if (!new_nodo)
+		{
+			ft_free_env(env_copy);
+			return (NULL);
+		}
+		ft_lstadd_back_env(&env_copy, new_nodo);
+		env = env->next;
+	}
+	return (env_copy);
+}
+
+void	ft_swap_env_content(t_env *a, t_env *b)
+{
+	char	*tmp;
+	int		tmp_exporte;
+
+	tmp = a->data;
+	a->data = b->data;
+	b->data = tmp;
+	tmp = a->var;
+	a->var = b->var;
+	b->var = tmp;
+	tmp = a->value;
+	a->value = b->value;
+	b->value = tmp;
+	tmp_exporte = a->exporte;
+	a->exporte = b->exporte;
+	b->exporte = tmp_exporte;
+}
+
+void	ft_sort_env_copy(t_env *head)
+{
+	t_env	*current;
+	int		swap;
+
+	swap = 1;
+	while (swap)
+	{
+		swap = 0;
+		current = head;
+		while (current && current->next)
+		{
+			if (ft_strcmp(current->var, current->next->var) > 0)
+			{
+				ft_swap_env_content(current, current->next);
+				swap = 1;
+			}
+			current = current->next;
+		}
+	}
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   export_utils2.c                                    :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/14 14:27:43 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:22:14 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+void	ft_export_error_msj(char *arg, char *msj)
+{
+	ft_putstr_fd("minishell: export: ", STDERR_FILENO);
+	if (arg)
+	{
+		ft_putstr_fd(arg, STDERR_FILENO);
+		ft_putstr_fd(": ", STDERR_FILENO);
+	}
+	if (msj)
+		ft_putendl_fd(msj, STDERR_FILENO);
+}
+
+int	ft_parsing_export_arg(char *arg)
+{
+	int	i;
+
+	i = 1;
+	if (!ft_isalpha(arg[0]) && (arg[0] != '_'))
+		return (1);
+	while (arg[i] && !(arg[i] == '=' || (arg[i] \
+== '+' && arg[i + 1] == '=')))
+	{
+		if (!ft_isalpha(arg[i]) && !ft_isdigit(arg[i]) \
+&& !(arg[i] == '_'))
+			return (1);
+		i++;
+	}
+	return (0);
+}
+
+int	ft_check_equal(char *arg)
+{
+	int	i;
+
+	i = 0;
+	while (arg[i])
+	{
+		if (arg[i] == '=')
+			return (1);
+		else if (arg[i] == '+' && arg[i + 1] == '=')
+			return (2);
+		i++;
+	}
+	return (0);
+}
+
+t_env	*ft_var_exists(t_env *env, char *arg)
+{
+	char	*var;
+
+	var = ft_extract_var(arg);
+	while (env)
+	{
+		if (ft_strcmp(env->var, var) == 0)
+		{
+			free(var);
+			return (env);
+		}
+		env = env->next;
+	}
+	free(var);
+	return (NULL);
+}
+
+t_env	*ft_find_env(t_shell *shell, char *var)
+{
+	t_env	*env;
+
+	env = shell->env;
+	while (env)
+	{
+		if (ft_strcmp(env->var, var) == 0)
+			return (env);
+		env = env->next;
+	}
+	return (NULL);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   pwd.c                                              :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/04 11:45:47 by brturcio          #+#    #+#             */
+/*   Updated: 2025/05/09 17:28:30 by yel-mens         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+int	ft_pwd_builtins(t_cmd *cmd)
+{
+	char	*rute;
+
+	(void)cmd;
+	rute = getcwd(NULL, 0);
+	if (!rute)
+	{
+		ft_putstr_fd("minishell: pwd: getcwd failed\n", STDERR_FILENO);
+		return (1);
+	}
+	ft_putstr_fd(rute, STDOUT_FILENO);
+	ft_putstr_fd("\n", STDOUT_FILENO);
+	free(rute);
+	return (0);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   unset.c                                            :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/06/10 17:36:08 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:22:31 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+int	ft_unset_builtins(t_shell *shell)
+{
+	char	**args;
+	t_env	*env_to_delete;
+	int		i;
+
+	args = shell->cmds->args;
+	i = 1;
+	while (args[i])
+	{
+		env_to_delete = ft_find_env(shell, args[i]);
+		if (!env_to_delete)
+		{
+			i++;
+			continue ;
+		}
+		if (env_to_delete)
+			ft_unset_env(env_to_delete, shell);
+		i++;
+	}
+	return (0);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   exec_util.c                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/29 21:25:01 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/06 17:09:02 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+/**
+ * @brief Forks and launches each command that requires a new process.
+ *
+ * For each command:
+ * - If the command is not a builtin that runs without fork,
+ *   it forks a new process.
+ * - In the child, it installs execution signal handlers and
+ *   runs the command.
+ * - PIDs of children are stored for later `waitpid` calls.
+ *
+ * @param env The environment variables.
+ * @param shell The shell state structure.
+ * @return 1 on success, 0 on failure.
+ */
+int	ft_init_process(char **env, t_shell *shell)
+{
+	int		i;
+	t_cmd	*cmd;
+
+	i = 0;
+	cmd = shell->cmds;
+	while (cmd)
+	{
+		if (!ft_no_fork(cmd, shell))
+		{
+			shell->pids[i] = fork();
+			if (shell->pids[i] < 0)
+				return (1);
+			if (!shell->pids[i])
+			{
+				ft_control_signals_child();
+				ft_child_process(cmd, env, shell);
+				exit(EXIT_FAILURE);
+			}
+			i++;
+		}
+		cmd = cmd->next;
+	}
+	return (1);
+}
+
+/**
+ * @brief Counts the number of commands in the command list.
+ *
+ * Useful to determine how many child processes will be created.
+ *
+ * @param cmds Pointer to the first command.
+ * @return Number of commands.
+ */
+
+int	ft_count_cmds(t_cmd *cmds)
+{
+	int	count;
+
+	count = 0;
+	while (cmds)
+	{
+		count++;
+		cmds = cmds->next;
+	}
+	return (count);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   exec.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/04 11:21:39 by yel-mens          #+#    #+#             */
+/*   Updated: 2025/06/12 22:06:42 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+static int	ft_dup_files(t_cmd *cmd)
+{
+	if (cmd->in < 0 || cmd->out < 0)
+		return (0);
+	if (cmd->in >= 0 && cmd->in != STDIN_FILENO)
+	{
+		if (dup2(cmd->in, STDIN_FILENO) < 0)
+		{
+			perror("dup2 to stdin");
+			close(cmd->in);
+			if (cmd->out >= 0 && cmd->out != STDOUT_FILENO)
+				close(cmd->out);
+			return (0);
+		}
+		close(cmd->in);
+	}
+	if (cmd->out >= 0 && cmd->out != STDOUT_FILENO)
+	{
+		if (dup2(cmd->out, STDOUT_FILENO) < 0)
+		{
+			perror("dup2 to stdout");
+			close(cmd->out);
+			return (0);
+		}
+		close(cmd->out);
+	}
+	return (1);
+}
+
+static int	ft_exec(t_cmd *cmd, char **env, t_shell *shell)
+{
+	if (!cmd->args)
+		return (0);
+	if (ft_is_builtin(cmd->args[0]))
+	{
+		ft_exec_builtins(cmd, shell);
+		ft_free_shell(shell);
+		exit(EXIT_SUCCESS);
+	}
+	else if (execve(cmd->args[0], cmd->args, env) < 0)
+		return (0);
+	return (1);
+}
+
+static void	ft_close(t_cmd *all_cmd, t_cmd *cmd)
+{
+	while (all_cmd)
+	{
+		if (all_cmd != cmd)
+		{
+			if (all_cmd->in >= 0 && all_cmd->in != STDIN_FILENO)
+				close(all_cmd->in);
+			if (all_cmd->out >= 0 && all_cmd->out != STDOUT_FILENO)
+				close(all_cmd->out);
+		}
+		all_cmd = all_cmd->next;
+	}
+}
+
+void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
+{
+	int	exit_status;
+
+	exit_status = shell->exit_status;
+	ft_close(shell->cmds, cmd);
+	if (!ft_dup_files(cmd))
+	{
+		if (cmd->in < 0)
+		{
+			ft_free_shell(shell);
+			exit(exit_status);
+		}
+		ft_free_shell(shell);
+		return ;
+	}
+	if (!ft_exec(cmd, env, shell))
+	{
+		ft_free_shell(shell);
+		exit(EXIT_CANNOT_EXECUTE);
+	}
+}
+
+/**
+ * @brief Handles the complete execution cycle of commands.
+ *
+ * This function initializes process handling by:
+ * - Counting the number of commands in the list.
+ * - Allocating memory for child PIDs.
+ * - Forking and executing each command.
+ * - Waiting for all children and updating the exit status.
+ * - Freeing all commands after execution.
+ *
+ * @param env The environment variables.
+ * @param shell The shell state structure.
+ */
+void	ft_process(char **env, t_shell *shell)
+{
+	shell->nb_cmds = ft_count_cmds(shell->cmds);
+	shell->pids = ft_calloc(shell->nb_cmds, sizeof(pid_t));
+	if (!shell->pids)
+		return ;
+	if (!ft_init_process(env, shell))
+		return ;
+	ft_wait_status_child(shell);
+	free(shell->pids);
+	shell->pids = NULL;
+	ft_free_cmds(shell->cmds);
+	shell->cmds = NULL;
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   free.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/02 14:45:12 by yel-mens          #+#    #+#             */
+/*   Updated: 2025/06/13 07:17:46 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+void	ft_free_array(char **array)
+{
+	int	i;
+
+	if (!array)
+		return ;
+	i = 0;
+	while (array[i])
+	{
+		free(array[i]);
+		array[i] = NULL;
+		i++;
+	}
+	free(array);
+	array = NULL;
+}
+
+void	ft_free_cmds(t_cmd *cmds)
+{
+	t_cmd	*next_cmd;
+
+	next_cmd = NULL;
+	while (cmds)
+	{
+		next_cmd = cmds->next;
+		if (cmds->args)
+			ft_free_array(cmds->args);
+		if (cmds->in >= 0 && cmds->in != STDIN_FILENO)
+			close(cmds->in);
+		if (cmds->out >= 0 && cmds->out != STDOUT_FILENO)
+			close(cmds->out);
+		free(cmds);
+		cmds = next_cmd;
+	}
+}
+
+void	ft_free_env(t_env *env)
+{
+	t_env	*next_env;
+
+	next_env = NULL;
+	while (env)
+	{
+		next_env = env->next;
+		free(env->data);
+		free(env->var);
+		free(env->value);
+		free(env);
+		env = next_env;
+	}
+}
+
+void	ft_error(char *msg, int exit_code, t_shell *shell)
+{
+	if (!shell)
+		exit(EXIT_FAILURE);
+	perror(msg);
+	ft_free_shell(shell);
+	exit(exit_code);
+}
+
+void	ft_free_shell(t_shell *shell)
+{
+	if (shell)
+	{
+		if (shell->cmds)
+			ft_free_cmds(shell->cmds);
+		if (shell->env)
+			ft_free_env(shell->env);
+		if (shell->pids)
+			free(shell->pids);
+		if (shell->history)
+			ft_free_history(shell->history);
+		rl_clear_history();
+		free(shell);
+	}
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   main.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/01 08:26:31 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:19:42 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+char	*ft_print_prompt(t_shell *shell)
+{
+	char	*prompt;
+	t_env	*logname;
+	char	*tmp;
+	char	pwd[BUFSIZ];
+
+	if (!getcwd(pwd, sizeof(pwd)))
+		return (ft_strdup(HGRN"minishell $> "RST));
+	logname = ft_find_env(shell, "LOGNAME");
+	if (!logname)
+		logname->value = "user";
+	prompt = ft_strjoin(HGRN, logname->value);
+	prompt = ft_strjoin_free(prompt, ":");
+	prompt = ft_strjoin_free(prompt, RST);
+	tmp = ft_strjoin(prompt, HMAG);
+	free(prompt);
+	prompt = tmp;
+	prompt = ft_strjoin_free(prompt, pwd);
+	prompt = ft_strjoin_free(prompt, RST);
+	prompt = ft_strjoin_free(prompt, "$> ");
+	return (prompt);
+}
+
+static void	ft_handle_line(char *line, char **env, t_shell *shell)
+{
+	add_history(line);
+	ft_parse(line, shell);
+	ft_process(env, shell);
+	while (wait(NULL) != -1)
+		;
+}
+
+int	main(int argc, char **argv, char **env)
+{
+	t_shell	*shell;
+	char	*line;
+	char	*prompt;
+
+	(void) argc;
+	(void) argv;
+	// printbanner();
+	shell = init_shell(env);
+	while (shell)
+	{
+		prompt = ft_print_prompt(shell);
+		ft_control_signals_main();
+		line = readline(prompt);
+		free(prompt);
+		ft_update_exit_status_by_signal(shell);
+		if (!line)
+		{
+			write (STDOUT_FILENO, "exit\n", 5);
+			break ;
+		}
+		ft_handle_line(line, env, shell);
+		free(line);
+	}
+	rl_clear_history();
+	ft_free_shell(shell);
+	return (EXIT_SUCCESS);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
 /*   cmd.c                                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
@@ -215,227 +1491,6 @@ int	ft_open_cmd(t_token	**token, t_cmd *cmd, t_shell *shell)
 	args[i] = NULL;
 	cmd->args = ft_access(args, shell);
 	return (success);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   token.c                                            :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/03 10:18:43 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/07 10:38:14 by yel-mens         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-static char	*ft_get_next_word(char *line, int *i)
-{
-	int		begin_word;
-	int		end_word;
-	int		j;
-	char	*word;
-
-	while (ft_isspace(line[*i]))
-		*i += 1;
-	begin_word = *i;
-	while (line[*i] && !ft_isspace(line[*i]))
-		*i += 1;
-	end_word = (*i)++;
-	word = malloc(sizeof(char) * (end_word - begin_word) + 1);
-	if (!word)
-		return (NULL);
-	j = 0;
-	while (j < end_word - begin_word)
-	{
-		word[j] = line[begin_word + j];
-		j++;
-	}
-	word[j] = '\0';
-	return (word);
-}
-
-static t_token	*ft_add_token(char *line, int *i, t_token_type t, t_shell *shl)
-{
-	t_token	*token;
-
-	token = malloc(sizeof(t_token));
-	if (!token)
-		ft_error("token malloc error", EXIT_MALLOC, shl);
-	token->type = t;
-	if (token->type == TOKEN_REDIR_IN || token->type == TOKEN_REDIR_OUT)
-		*i += 1;
-	if (token->type == TOKEN_HEREDOC || token->type == TOKEN_REDIR_APPEND)
-		*i += 2;
-	token->next = NULL;
-	token->value = ft_get_next_word(line, i);
-	if (!token->value)
-	{
-		free(token);
-		ft_error("token value malloc error", EXIT_MALLOC, shl);
-	}
-	if (!token->value[0])
-	{
-		free(token->value);
-		free(token);
-		return (NULL);
-	}
-	return (token);
-}
-
-static t_token	*ft_add_token_pipe(int *i, t_shell *shell)
-{
-	t_token	*token;
-
-	token = malloc(sizeof(t_token));
-	if (!token)
-		ft_error("token malloc error", EXIT_MALLOC, shell);
-	token->type = TOKEN_PIPE;
-	token->next = NULL;
-	token->value = NULL;
-	*i += 1;
-	return (token);
-}
-
-static void	ft_switch_token(char *line, int *i, t_token **token, t_shell *shell)
-{
-	t_token	*aux_token;
-	t_token	*cur_token;
-
-	if (line[*i] == '<' && line[*i + 1] == '<')
-		cur_token = ft_add_token(line, i, TOKEN_HEREDOC, shell);
-	else if (line[*i] == '<')
-		cur_token = ft_add_token(line, i, TOKEN_REDIR_IN, shell);
-	else if (line[*i] == '>' && line[*i + 1] == '>')
-		cur_token = ft_add_token(line, i, TOKEN_REDIR_APPEND, shell);
-	else if (line[*i] == '>')
-		cur_token = ft_add_token(line, i, TOKEN_REDIR_OUT, shell);
-	else if (line[*i] == '|')
-		cur_token = ft_add_token_pipe(i, shell);
-	else
-		cur_token = ft_add_token(line, i, TOKEN_WORD, shell);
-	if (*token)
-	{
-		aux_token = *token;
-		while (aux_token->next)
-			aux_token = aux_token->next;
-		aux_token->next = cur_token;
-	}
-	else
-		*token = cur_token;
-}
-
-t_token	*ft_tokeniser(char *line, t_shell *shell)
-{
-	t_token	*token;
-	int		len;
-	int		i;
-
-	token = NULL;
-	len = ft_strlen(line);
-	i = 0;
-	while (i < len && ft_isspace(line[i]))
-		i++;
-	while (i < len)
-	{
-		ft_switch_token(line, &i, &token, shell);
-		while (i < len && ft_isspace(line[i]))
-			i++;
-	}
-	return (token);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   sort_token.c                                       :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/05 12:52:59 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/07 10:28:31 by yel-mens         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-static void	ft_token_info(t_token *tkn, int tab_info[3])
-{
-	int	i;
-
-	tab_info[1] = 0;
-	tab_info[2] = 0;
-	i = 0;
-	while (tkn && tkn->type != TOKEN_PIPE)
-	{
-		if (tkn->type == TOKEN_REDIR_IN || tkn->type == TOKEN_HEREDOC
-			|| tkn->type == TOKEN_REDIR_OUT || tkn->type == TOKEN_REDIR_APPEND)
-			tab_info[1] += 1;
-		if (tkn->type == TOKEN_WORD)
-			tab_info[2] += 1;
-		i++;
-		tkn = tkn->next;
-	}
-	tab_info[0] = i;
-}
-
-static void	ft_place_token(t_token *token, t_token **tab_token, int tab_info[3])
-{
-	int	first;
-
-	if (token->type == TOKEN_REDIR_IN || token->type == TOKEN_HEREDOC
-		|| token->type == TOKEN_REDIR_OUT || token->type == TOKEN_REDIR_APPEND)
-		first = 0;
-	else
-		first = tab_info[1];
-	while (tab_token[first])
-		first++;
-	tab_token[first] = token;
-}
-
-static void	ft_link_token(t_token **tab_token, int len, t_token *last_token)
-{
-	t_token	*cur_token;
-	int		i;
-
-	if (len == 0)
-		return ;
-	i = 0;
-	while (i < len - 1)
-	{
-		cur_token = tab_token[i];
-		cur_token->next = tab_token[++i];
-	}
-	cur_token = tab_token[i];
-	cur_token->next = last_token;
-}
-
-t_token	*ft_sort_token(t_token *token)
-{
-	t_token	**tab_token;
-	int		tab_info[3];
-	int		len;
-
-	if (!token)
-		return (NULL);
-	ft_token_info(token, tab_info);
-	if (tab_info[0] == 0)
-		return (token);
-	tab_token = malloc(sizeof(t_token *) * tab_info[0]);
-	len = tab_info[0];
-	while (len-- > 0)
-		tab_token[len] = NULL;
-	while (token && token->type != TOKEN_PIPE)
-	{
-		ft_place_token(token, tab_token, tab_info);
-		token = token->next;
-	}
-	if (token && token->type == TOKEN_PIPE)
-		token->next = ft_sort_token(token->next);
-	ft_link_token(tab_token, tab_info[0], token);
-	token = tab_token[0];
-	free(tab_token);
-	return (token);
 }
 /* ************************************************************************** */
 /*                                                                            */
@@ -584,12 +1639,233 @@ void	ft_parse(char *line, t_shell *shell)
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
+/*   sort_token.c                                       :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/05 12:52:59 by yel-mens          #+#    #+#             */
+/*   Updated: 2025/05/07 10:28:31 by yel-mens         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+static void	ft_token_info(t_token *tkn, int tab_info[3])
+{
+	int	i;
+
+	tab_info[1] = 0;
+	tab_info[2] = 0;
+	i = 0;
+	while (tkn && tkn->type != TOKEN_PIPE)
+	{
+		if (tkn->type == TOKEN_REDIR_IN || tkn->type == TOKEN_HEREDOC
+			|| tkn->type == TOKEN_REDIR_OUT || tkn->type == TOKEN_REDIR_APPEND)
+			tab_info[1] += 1;
+		if (tkn->type == TOKEN_WORD)
+			tab_info[2] += 1;
+		i++;
+		tkn = tkn->next;
+	}
+	tab_info[0] = i;
+}
+
+static void	ft_place_token(t_token *token, t_token **tab_token, int tab_info[3])
+{
+	int	first;
+
+	if (token->type == TOKEN_REDIR_IN || token->type == TOKEN_HEREDOC
+		|| token->type == TOKEN_REDIR_OUT || token->type == TOKEN_REDIR_APPEND)
+		first = 0;
+	else
+		first = tab_info[1];
+	while (tab_token[first])
+		first++;
+	tab_token[first] = token;
+}
+
+static void	ft_link_token(t_token **tab_token, int len, t_token *last_token)
+{
+	t_token	*cur_token;
+	int		i;
+
+	if (len == 0)
+		return ;
+	i = 0;
+	while (i < len - 1)
+	{
+		cur_token = tab_token[i];
+		cur_token->next = tab_token[++i];
+	}
+	cur_token = tab_token[i];
+	cur_token->next = last_token;
+}
+
+t_token	*ft_sort_token(t_token *token)
+{
+	t_token	**tab_token;
+	int		tab_info[3];
+	int		len;
+
+	if (!token)
+		return (NULL);
+	ft_token_info(token, tab_info);
+	if (tab_info[0] == 0)
+		return (token);
+	tab_token = malloc(sizeof(t_token *) * tab_info[0]);
+	len = tab_info[0];
+	while (len-- > 0)
+		tab_token[len] = NULL;
+	while (token && token->type != TOKEN_PIPE)
+	{
+		ft_place_token(token, tab_token, tab_info);
+		token = token->next;
+	}
+	if (token && token->type == TOKEN_PIPE)
+		token->next = ft_sort_token(token->next);
+	ft_link_token(tab_token, tab_info[0], token);
+	token = tab_token[0];
+	free(tab_token);
+	return (token);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   token.c                                            :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/03 10:18:43 by yel-mens          #+#    #+#             */
+/*   Updated: 2025/05/07 10:38:14 by yel-mens         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+static char	*ft_get_next_word(char *line, int *i)
+{
+	int		begin_word;
+	int		end_word;
+	int		j;
+	char	*word;
+
+	while (ft_isspace(line[*i]))
+		*i += 1;
+	begin_word = *i;
+	while (line[*i] && !ft_isspace(line[*i]))
+		*i += 1;
+	end_word = (*i)++;
+	word = malloc(sizeof(char) * (end_word - begin_word) + 1);
+	if (!word)
+		return (NULL);
+	j = 0;
+	while (j < end_word - begin_word)
+	{
+		word[j] = line[begin_word + j];
+		j++;
+	}
+	word[j] = '\0';
+	return (word);
+}
+
+static t_token	*ft_add_token(char *line, int *i, t_token_type t, t_shell *shl)
+{
+	t_token	*token;
+
+	token = malloc(sizeof(t_token));
+	if (!token)
+		ft_error("token malloc error", EXIT_MALLOC, shl);
+	token->type = t;
+	if (token->type == TOKEN_REDIR_IN || token->type == TOKEN_REDIR_OUT)
+		*i += 1;
+	if (token->type == TOKEN_HEREDOC || token->type == TOKEN_REDIR_APPEND)
+		*i += 2;
+	token->next = NULL;
+	token->value = ft_get_next_word(line, i);
+	if (!token->value)
+	{
+		free(token);
+		ft_error("token value malloc error", EXIT_MALLOC, shl);
+	}
+	if (!token->value[0])
+	{
+		free(token->value);
+		free(token);
+		return (NULL);
+	}
+	return (token);
+}
+
+static t_token	*ft_add_token_pipe(int *i, t_shell *shell)
+{
+	t_token	*token;
+
+	token = malloc(sizeof(t_token));
+	if (!token)
+		ft_error("token malloc error", EXIT_MALLOC, shell);
+	token->type = TOKEN_PIPE;
+	token->next = NULL;
+	token->value = NULL;
+	*i += 1;
+	return (token);
+}
+
+static void	ft_switch_token(char *line, int *i, t_token **token, t_shell *shell)
+{
+	t_token	*aux_token;
+	t_token	*cur_token;
+
+	if (line[*i] == '<' && line[*i + 1] == '<')
+		cur_token = ft_add_token(line, i, TOKEN_HEREDOC, shell);
+	else if (line[*i] == '<')
+		cur_token = ft_add_token(line, i, TOKEN_REDIR_IN, shell);
+	else if (line[*i] == '>' && line[*i + 1] == '>')
+		cur_token = ft_add_token(line, i, TOKEN_REDIR_APPEND, shell);
+	else if (line[*i] == '>')
+		cur_token = ft_add_token(line, i, TOKEN_REDIR_OUT, shell);
+	else if (line[*i] == '|')
+		cur_token = ft_add_token_pipe(i, shell);
+	else
+		cur_token = ft_add_token(line, i, TOKEN_WORD, shell);
+	if (*token)
+	{
+		aux_token = *token;
+		while (aux_token->next)
+			aux_token = aux_token->next;
+		aux_token->next = cur_token;
+	}
+	else
+		*token = cur_token;
+}
+
+t_token	*ft_tokeniser(char *line, t_shell *shell)
+{
+	t_token	*token;
+	int		len;
+	int		i;
+
+	token = NULL;
+	len = ft_strlen(line);
+	i = 0;
+	while (i < len && ft_isspace(line[i]))
+		i++;
+	while (i < len)
+	{
+		ft_switch_token(line, &i, &token, shell);
+		while (i < len && ft_isspace(line[i]))
+			i++;
+	}
+	return (token);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
 /*   heredoc.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/24 17:23:25 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/06/12 21:28:58 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/13 07:12:41 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -665,9 +1941,10 @@ static void	ft_read_stdin(int end[2], char *limiter, t_token *a, t_shell *shl)
 	exit(EXIT_FAILURE);
 }
 
-void	ft_heredoc_continuation(t_shell *shell, pid_t pid, struct termios *original_config, int *end)
+void	ft_heredoc_continuation(t_shell *shell, pid_t pid, \
+struct termios *original_config, int *end)
 {
-	int status;
+	int	status;
 
 	close(end[1]);
 	ft_signals_ign();
@@ -680,14 +1957,20 @@ void	ft_heredoc_continuation(t_shell *shell, pid_t pid, struct termios *original
 		shell->cmds->in = -1;
 		close(end[0]);
 	}
+	else if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_FAILURE)
+	{
+		ft_printf("\nminishell: warning: here-document delimited "\
+"by end-of-file (wanted 'delimiter')\n");
+		shell->cmds->in = end[0];
+	}
 	else
 		shell->cmds->in = end[0];
 }
 
 void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
 {
-	pid_t	pid;
-	int		end[2];
+	pid_t			pid;
+	int				end[2];
 	struct termios	original_config;
 	struct termios	heredoc_config;
 
@@ -710,1487 +1993,6 @@ void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
 	}
 	ft_heredoc_continuation(shell, pid, &original_config, end);
 }
-
-// void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
-// {
-// 	int				end[2];
-// 	pid_t			pid;
-// 	int				status;
-// 	struct termios	original_termios;
-// 	struct termios	heredoc_termios;
-
-// 	// --- DECLARACIONES CORREGIDAS ---
-// 	// Guardar atributos originales y desactivar ECHOCTL
-// 	tcgetattr(STDIN_FILENO, &original_termios);
-// 	heredoc_termios = original_termios;
-// 	heredoc_termios.c_lflag &= ~ECHOCTL;
-// 	tcsetattr(STDIN_FILENO, TCSANOW, &heredoc_termios);
-// 	if (pipe(end) < 0)
-// 		ft_error("Cannot open pipe in heredoc", EXIT_FD, shell);
-// 	pid = fork();
-// 	if (pid < 0)
-// 		ft_error("fork in heredoc failed", EXIT_FD, shell);
-// 	if (pid == 0) // Proceso Hijo
-// 	{
-// 		// El hijo debe restaurar los termios originales para no afectar su propio estado
-// 		// tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
-// 		ft_control_signals_heredoc();
-// 		ft_read_stdin(end, limiter, alltkn, shell);
-// 	}
-// 	// LÓGICA DEL PADRE
-// 	signal(SIGINT, SIG_IGN);
-// 	signal(SIGQUIT, SIG_IGN);
-// 	close(end[1]);
-// 	waitpid(pid, &status, 0);
-// 	// Restaurar los atributos originales de la terminal en el padre
-// 	tcsetattr(STDIN_FILENO, TCSANOW, &original_termios);
-// 	// ft_control_signals_main();
-// 	// --- USO DEL PARÁMETRO 'cmd' PARA CORREGIR EL ERROR ---
-// 	if (WIFEXITED(status) && WEXITSTATUS(status) == 130)
-// 	{
-// 		close(end[0]);
-// 		cmd->in = -1; // Marcar como inválido para que no se ejecute el comando
-// 		shell->exit_status = 130;
-// 	}
-// 	else
-// 	{
-// 		cmd->in = end[0]; // Asignar el pipe de lectura como entrada del comando
-// 	}
-// }
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   free.c                                             :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/02 14:45:12 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/29 20:24:19 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-void	ft_free_array(char **array)
-{
-	int	i;
-
-	if (!array)
-		return ;
-	i = 0;
-	while (array[i])
-	{
-		free(array[i]);
-		array[i] = NULL;
-		i++;
-	}
-	free(array);
-	array = NULL;
-}
-
-void	ft_free_cmds(t_cmd *cmds)
-{
-	t_cmd	*next_cmd;
-
-	next_cmd = NULL;
-	while (cmds)
-	{
-		next_cmd = cmds->next;
-		if (cmds->args)
-			ft_free_array(cmds->args);
-		if (cmds->in >= 0 && cmds->in != STDIN_FILENO)
-			close(cmds->in);
-		if (cmds->out >= 0 && cmds->out != STDOUT_FILENO)
-			close(cmds->out);
-		free(cmds);
-		cmds = next_cmd;
-	}
-}
-
-void	ft_free_env(t_env *env)
-{
-	t_env	*next_env;
-
-	next_env = NULL;
-	while (env)
-	{
-		next_env = env->next;
-		free(env->data);
-		free(env->var);
-		free(env->value);
-		free(env);
-		env = next_env;
-	}
-}
-
-void	ft_error(char *msg, int exit_code, t_shell *shell)
-{
-	if (!shell)
-		exit(EXIT_FAILURE);
-	perror(msg);
-	ft_free_shell(shell);
-	exit(exit_code);
-}
-
-void	ft_free_shell(t_shell *shell)
-{
-	if (shell)
-	{
-		if (shell->cmds)
-			ft_free_cmds(shell->cmds);
-		if (shell->env)
-			ft_free_env(shell->env);
-		if (shell->pids)
-			free(shell->pids);
-		// if (shell->history)
-		// 	ft_free_history(shell->history);
-		rl_clear_history();
-		free(shell);
-	}
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   signal_control.c                                   :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/29 16:12:14 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/12 20:29:42 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-void	ft_control_signals_main(void)
-{
-	signal(SIGINT, ft_sigint_handler);
-	signal(SIGQUIT, SIG_IGN);
-}
-void	ft_control_signals_child(void)
-{
-	// g_signal = EXEC_SIGINT;
-	signal(SIGINT, SIG_DFL);
-	signal(SIGQUIT, SIG_DFL);
-	signal(SIGPIPE, SIG_IGN);
-}
-void	ft_control_signals_heredoc(void)
-{
-	signal(SIGINT, ft_handler_heredoc);
-	signal(SIGQUIT, SIG_IGN);
-}
-
-
-void	ft_signals_ign(void)
-{
-	signal(SIGINT, SIG_IGN);
-	signal(SIGQUIT, SIG_IGN);
-}
-
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   signal.c                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/22 10:32:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/12 21:22:02 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-void	ft_sigint_handler(int signal)
-{
-	(void)signal;
-	g_signal = MAIN_SIGINT;
-	write(STDOUT_FILENO, "\n", 1);
-	rl_replace_line("", 0);
-	rl_on_new_line();
-	rl_redisplay();
-}
-
-void	ft_handler_heredoc(int signal)
-{
-	(void)signal;
-	write(STDOUT_FILENO, "\n", 1);
-	exit(130);
-}
-
-void	ft_wait_status_child(t_shell *shell)
-{
-	int	i;
-	int	status;
-	int	sig;
-	int	first_signal; // Variable para imprimir solo una nueva línea
-
-	i = 0;
-	first_signal = 1;
-	ft_signals_ign();
-	while (i < shell->nb_cmds)
-	{
-		if (shell->pids[i] > 0)
-		{
-			waitpid(shell->pids[i], &status, 0);
-			if (WIFSIGNALED(status))
-			{
-				sig = WTERMSIG(status);
-				shell->exit_status = 128 + sig;
-				if (sig == SIGQUIT && first_signal)
-				{
-					ft_putendl_fd("Quit", STDOUT_FILENO);
-					first_signal = 0;
-				}
-				if (sig == SIGINT && first_signal)
-				{
-					write(STDOUT_FILENO, "\n", 1);
-					first_signal = 0;
-				}
-			}
-			else if (WIFEXITED(status))
-				shell->exit_status = WEXITSTATUS(status);
-		}
-		i++;
-	}
-	ft_control_signals_main();
-}
-
-void	ft_update_exit_status_by_signal(t_shell *shell)
-{
-	(void)shell;
-	if (g_signal == MAIN_SIGINT || g_signal == HEREDOC_SIGINT)
-		shell->exit_status = 130;
-	// else if (g_signal == EXEC_SIGQUIT)
-	// 	shell->exit_status = 131;
-	g_signal = NO_SIGNAL;
-}
-
-
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   main.c                                             :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/01 08:26:31 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/12 10:20:16 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-volatile sig_atomic_t	g_signal = NO_SIGNAL;
-
-// void	ft_print_prompt(t_shell *shell)
-// {
-// 	t_env	*logname;
-// 	t_env	*hostname;
-// 	t_env	*pwd;
-
-// 	if (!isatty(STDIN_FILENO))
-// 		return ;
-// 	logname = ft_search_env("LOGNAME", shell);
-// 	hostname = ft_search_env("NAME", shell);
-// 	pwd = ft_search_env("PWD", shell);
-// 	if (logname)
-// 		ft_printf(HGRN"%s"RST, logname->data + 8);
-// 	if (hostname)
-// 		ft_printf(CYAN"@%s"RST, hostname->data + 5);
-// 	if (logname || hostname)
-// 		write(1, ":", 1);
-// 	if (pwd)
-// 		ft_printf(HMAG"%s"RST, pwd->data + 4);
-// 	write(1, "$\t", 2);
-// }
-
-// static void	ft_handle_line(char *line, char **env, t_shell *shell)
-// {
-// 	ft_init_history(line, shell);
-// 	ft_parse(line, shell);
-// 	ft_process(env, shell);
-// 	while (wait(NULL) != -1)
-// 		;
-// }
-
-// static int	ft_check_signal(char *line)
-// {
-// 	if (g_signal == SIGINT)
-// 	{
-// 		g_signal = 0;
-// 		if (line)
-// 			free(line);
-// 		return (1);
-// 	}
-// 	return (0);
-// }
-
-// int	main(int argc, char **argv, char **env)
-// {
-// 	t_shell	*shell;
-// 	char	*line;
-
-// 	(void) argc;
-// 	(void) argv;
-// 	// printbanner();
-// 	shell = init_shell(env);
-// 	ft_signals_control_main();
-// 	while (shell)
-// 	{
-// 		g_signal = 0;
-// 		ft_print_prompt(shell);
-// 		line = get_next_line(STDIN_FILENO);
-// 		if (ft_check_signal(line))
-// 			continue ;
-// 		if (!line)
-// 			break ;
-// 		ft_handle_line(line, env, shell);
-// 	}
-// 	ft_free_shell(shell);
-// 	if (isatty(STDIN_FILENO))
-// 		ft_printf(YELLOW"\nSEE YOU SOON !\n"RST);
-// 	return (EXIT_SUCCESS);
-// }
-
-
-char	*ft_print_prompt(t_shell *shell)
-{
-	char	*prompt;
-	t_env	*logname;
-	char	*tmp;
-	char	pwd[BUFSIZ];
-
-	if (!getcwd(pwd, sizeof(pwd)))
-		return (ft_strdup(HGRN"minishell $> "RST));
-	logname = ft_find_env(shell, "LOGNAME");
-	if (!logname)
-		logname->value = "user";
-	prompt = ft_strjoin(HGRN, logname->value);
-	prompt = ft_strjoin_free(prompt, ":");
-	prompt = ft_strjoin_free(prompt, RST);
-	tmp = ft_strjoin(prompt, HMAG);
-	free(prompt);
-	prompt = tmp;
-	prompt = ft_strjoin_free(prompt, pwd);
-	prompt = ft_strjoin_free(prompt, RST);
-	prompt = ft_strjoin_free(prompt, "$> ");
-	return (prompt);
-}
-
-static void	ft_handle_line(char *line, char **env, t_shell *shell)
-{
-	add_history(line);
-	ft_parse(line, shell);
-	ft_process(env, shell);
-	while (wait(NULL) != -1)
-		;
-}
-
-int	main(int argc, char **argv, char **env)
-{
-	t_shell	*shell;
-	char	*line;
-	char	*prompt;
-
-	(void) argc;
-	(void) argv;
-	// printbanner();
-	shell = init_shell(env);
-	while (shell)
-	{
-		prompt = ft_print_prompt(shell);
-		ft_control_signals_main();
-		line = readline(prompt);
-		free(prompt);
-		ft_update_exit_status_by_signal(shell);
-		if (!line)
-			break;
-		// printf("DEBUG (main): exit_status = %d.\n", shell->exit_status);
-		ft_handle_line(line, env, shell);
-		free(line);
-	}
-	rl_clear_history();
-	ft_free_shell(shell);
-	return (EXIT_SUCCESS);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   env_utils.c                                        :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/05 15:00:01 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/18 17:12:02 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-char	*ft_get_val(char *var, t_shell *shell)
-{
-	t_env	*env;
-
-	env = ft_var_exists(shell->env, var);
-	if (!env || !env->data)
-		return (NULL);
-	return (ft_strdup(env->value));
-}
-
-char	*build_new_env(char *var, char *data)
-{
-	char	*tmp;
-	char	*result;
-
-	tmp = ft_strjoin(var, "=");
-	if (!tmp)
-		return (NULL);
-	result = ft_strjoin(tmp, data);
-	free(tmp);
-	return (result);
-}
-
-char	*ft_update_env(char *var, char *data, t_shell *shell)
-{
-	t_env	*env;
-	char	*new_data;
-
-	env = ft_var_exists(shell->env, var);
-	if (!env)
-	{
-		new_data = build_new_env(var, data);
-		if (!new_data)
-			return (NULL);
-		ft_append_env(ft_strdup(new_data), shell);
-		return (new_data);
-	}
-	new_data = build_new_env(var, data);
-	if (!new_data)
-		return (NULL);
-	free(env->data);
-	free(env->value);
-	free(env->var);
-	env->data = new_data;
-	env->var = ft_extract_var(new_data);
-	env->value = ft_extract_value(new_data);
-	return (env->data);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   export.c                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/12 10:17:11 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/10 20:15:44 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-static int	ft_printf_export(t_env *env)
-{
-	t_env	*env_copy;
-	t_env	*tmp;
-
-	env_copy = ft_cread_env_copy(env);
-	if (!env_copy)
-		return (1);
-	ft_sort_env_copy(env_copy);
-	tmp = env_copy;
-	while (tmp)
-	{
-		ft_putstr_fd("declare -x ", STDOUT_FILENO);
-		ft_putstr_fd(tmp->var, STDOUT_FILENO);
-		if (ft_strchr(tmp->data, '='))
-		{
-			ft_putstr_fd("=\"", STDOUT_FILENO);
-			ft_putstr_fd(tmp->value, STDOUT_FILENO);
-			ft_putstr_fd("\"", STDOUT_FILENO);
-		}
-		ft_putstr_fd("\n", STDOUT_FILENO);
-		tmp = tmp->next;
-	}
-	ft_free_env(env_copy);
-	return (0);
-}
-
-int	ft_concat_env(char *var, char *value, t_env *node)
-{
-	char	*joined;
-	char	*new_data;
-
-	if (!node || !value || !node->value)
-		return (1);
-	joined = ft_strjoin(node->value, value);
-	if (!joined)
-		return (1);
-	new_data = build_new_env(var, joined);
-	free(joined);
-	if (!new_data)
-		return (1);
-	free(node->data);
-	free(node->value);
-	free(node->var);
-	node->data = new_data;
-	node->var = ft_extract_var(new_data);
-	node->value = ft_extract_value(new_data);
-	return (0);
-}
-
-static void	ft_update_or_append_env(t_shell *shell, int equal, \
-	char *var, char *value)
-{
-	t_env	*existing;
-
-	existing = ft_var_exists(shell->env, var);
-	if (existing)
-	{
-		if (equal == 1)
-			ft_update_env(var, value, shell);
-		else if (equal == 2)
-			ft_concat_env(var, value, existing);
-	}
-	else
-	{
-		if (equal)
-			ft_append_env(build_new_env(var, value), shell);
-		else
-			ft_append_env(ft_strdup(var), shell);
-	}
-}
-
-static int	ft_export_with_arg(t_shell *shell, char **args)
-{
-	int		equal;
-	char	*var;
-	char	*value;
-
-	equal = ft_check_equal(args[1]);
-	var = ft_extract_var(args[1]);
-	value = ft_extract_value(args[1]);
-	if (!var || !value)
-	{
-		free(var);
-		free(value);
-		return (1);
-	}
-	ft_update_or_append_env(shell, equal, var, value);
-	free(var);
-	free(value);
-	return (0);
-}
-
-int	ft_export_builtins(t_shell *shell)
-{
-	if (!shell->cmds->args[1])
-		return (ft_printf_export(shell->env));
-	if (ft_parsing_export_arg(shell->cmds->args[1]) || \
-		(shell->cmds->args[1] && shell->cmds->args[2]))
-	{
-		ft_export_error_msj(shell->cmds->args[1], \
-		"not a valid identifier");
-		return (1);
-	}
-	if (ft_export_with_arg(shell, shell->cmds->args))
-		return (1);
-	return (0);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   export_utils2.c                                    :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/14 14:27:43 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/10 19:22:44 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-void	ft_export_error_msj(char *arg, char *msj)
-{
-	ft_putstr_fd("minishell: export: ", STDERR_FILENO);
-	if (arg)
-	{
-		ft_putstr_fd(arg, STDERR_FILENO);
-		ft_putstr_fd(": ", STDERR_FILENO);
-	}
-	if (msj)
-		ft_putendl_fd(msj, STDERR_FILENO);
-}
-
-int	ft_parsing_export_arg(char *arg)
-{
-	int	i;
-
-	i = 1;
-	if (!ft_isalpha(arg[0]) && (arg[0] != '_'))
-		return (1);
-	while (arg[i] && !(arg[i] == '=' || (arg[i] \
-	== '+' && arg[i + 1] == '=')))
-	{
-		if (!ft_isalpha(arg[i]) && !ft_isdigit(arg[i]) \
-	&& !(arg[i] == '_'))
-			return (1);
-		i++;
-	}
-	return (0);
-}
-
-int	ft_check_equal(char *arg)
-{
-	int	i;
-
-	i = 0;
-	while (arg[i])
-	{
-		if (arg[i] == '=')
-			return (1);
-		else if (arg[i] == '+' && arg[i + 1] == '=')
-			return (2);
-		i++;
-	}
-	return (0);
-}
-
-t_env	*ft_var_exists(t_env *env, char *arg)
-{
-	char	*var;
-
-	var = ft_extract_var(arg);
-	while (env)
-	{
-		if (ft_strcmp(env->var, var) == 0)
-		{
-			free(var);
-			return (env);
-		}
-		env = env->next;
-	}
-	free(var);
-	return (NULL);
-}
-
-t_env	*ft_find_env(t_shell *shell, char *var)
-{
-	t_env	*env;
-
-	env = shell->env;
-	while (env)
-	{
-		if (ft_strcmp(env->var, var) == 0)
-			return (env);
-		env = env->next;
-	}
-	return (NULL);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   unset.c                                            :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/06/10 17:36:08 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/12 10:17:54 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-int	ft_unset_builtins(t_shell *shell)
-{
-	char	**args;
-	t_env	*env_to_delete;
-	int		i;
-	// int		error;
-
-	args = shell->cmds->args;
-	i = 1;
-	while (args[i])
-	{
-		env_to_delete = ft_find_env(shell, args[i]);
-		if (!env_to_delete)
-		{
-			i++;
-			continue;
-		}
-		if (env_to_delete)
-			ft_unset_env(env_to_delete, shell);
-		i++;
-	}
-	return (0);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   exit.c                                             :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/07 17:38:56 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/10 20:15:34 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-static void	ft_exit_error_msj(int exit, char *arg, char *msj)
-{
-	(void)exit;
-	ft_putstr_fd("minishell: exit: ", STDERR_FILENO);
-	if (arg)
-	{
-		ft_putstr_fd(arg, STDERR_FILENO);
-		ft_putstr_fd(": ", STDERR_FILENO);
-	}
-	if (msj)
-		ft_putstr_fd(msj, STDERR_FILENO);
-}
-
-static int	ft_is_number(char *arg)
-{
-	int	i;
-	int	num;
-
-	i = 0;
-	num = 0;
-	if (arg[0] == '-' || arg[0] == '+')
-		i++;
-	while (ft_isdigit(arg[i]))
-		i++;
-	if (arg[i] == '\0')
-		num = 1;
-	return (num);
-}
-
-static int	ft_check_exit_path(t_cmd *cmd, t_shell *shell)
-{
-	if (!ft_is_number(cmd->args[1]) && !cmd->args[2])
-	{
-		ft_exit_error_msj(1, cmd->args[1], "numeric argument required\n");
-		ft_free_shell(shell);
-		exit (2);
-	}
-	if (cmd->args[1] && cmd->args[2])
-	{
-		if (!ft_is_number(cmd->args[1]))
-		{
-			ft_exit_error_msj(1, cmd->args[1], "numeric argument required\n");
-			ft_free_shell(shell);
-			exit (2);
-		}
-		else
-		{
-			ft_exit_error_msj(1, NULL, "too many arguments\n");
-			shell->exit_status = 1;
-			return (1);
-		}
-	}
-	return (0);
-}
-
-static int	is_long_overflow(char *arg)
-{
-	int	size;
-
-	size = ft_strlen(arg);
-	if (arg[0] == '-')
-	{
-		if (size > 20 || (size == 20 && \
-		ft_strcmp(arg, "-9223372036854775808") > 0))
-			return (1);
-	}
-	else
-	{
-		if (size > 19 || (size == 19 && \
-		ft_strcmp(arg, "9223372036854775807") > 0))
-			return (1);
-	}
-	return (0);
-}
-
-void	ft_exit_builtins(t_cmd *cmd, t_shell *shell)
-{
-	int	status;
-
-	status = shell->exit_status;
-	if (isatty(STDIN_FILENO))
-		ft_putstr_fd("exit\n", STDERR_FILENO);
-	if (!cmd->args[1])
-	{
-		ft_free_shell(shell);
-		exit(status);
-	}
-	if (ft_check_exit_path(cmd, shell))
-		return ;
-	if (is_long_overflow(cmd->args[1]))
-	{
-		ft_exit_error_msj(1, cmd->args[1], "numeric argument required\n");
-		ft_free_shell(shell);
-		exit(2);
-	}
-	status = ft_atol (cmd->args[1]);
-	ft_free_shell(shell);
-	exit((unsigned char)status);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   echo.c                                             :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/01 13:40:32 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/09 17:27:30 by yel-mens         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-static int	ft_is_newline(char *str)
-{
-	int	i;
-
-	if (str[0] != '-')
-		return (1);
-	i = 1;
-	if (str[i] == '\0')
-		return (1);
-	while (str[i])
-	{
-		if (str[i] != 'n')
-			return (1);
-		i++;
-	}
-	return (0);
-}
-
-static int	ft_echo_printf(char **args)
-{
-	int	i;
-
-	i = 0;
-	while (args[i])
-	{
-		ft_putstr_fd(args[i], 1);
-		if (args[i + 1])
-			ft_putstr_fd(" ", 1);
-		i++;
-	}
-	return (0);
-}
-
-int	ft_echo_builtins(t_cmd *cmd)
-{
-	int	i;
-	int	newline;
-
-	i = 1;
-	newline = 1;
-	if (!cmd || !cmd->args || !cmd->args[0])
-		return (1);
-	while (cmd->args[i] && !ft_is_newline(cmd->args[i]))
-	{
-		newline = 0;
-		i++;
-	}
-	ft_echo_printf(cmd->args + i);
-	if (newline)
-		ft_putstr_fd("\n", 1);
-	return (0);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   env.c                                              :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/04 13:52:59 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/05 17:59:28 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-int	ft_env_builtins(t_cmd *cmd, t_env *env)
-{
-	(void)cmd;
-	while (env)
-	{
-		if (env->data && ft_strchr(env->data, '='))
-			ft_putendl_fd(env->data, 1);
-		env = env->next;
-	}
-	return (0);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   export_utils.c                                     :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/12 11:37:00 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/20 15:47:17 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-static t_env	*ft_lstnew_env(t_env *content)
-{
-	t_env	*cont;
-
-	cont = malloc(sizeof(t_env));
-	if (!cont)
-		return (NULL);
-	cont->data = ft_strdup(content->data);
-	if (!cont->data)
-	{
-		free(cont);
-		return (NULL);
-	}
-	cont->var = ft_extract_var(cont->data);
-	cont->value = ft_extract_value(cont->data);
-	cont->exporte = content->exporte;
-	cont->next = NULL;
-	cont->prev = NULL;
-	return (cont);
-}
-
-static void	ft_lstadd_back_env(t_env **lst, t_env *new)
-{
-	t_env	*last_node;
-
-	if (!*lst)
-		*lst = new;
-	else
-	{
-		last_node = *lst;
-		while (last_node->next != NULL)
-			last_node = last_node->next;
-		last_node->next = new;
-		new->prev = last_node;
-	}
-}
-
-t_env	*ft_cread_env_copy(t_env *env)
-{
-	t_env	*env_copy;
-	t_env	*new_nodo;
-
-	env_copy = NULL;
-	new_nodo = NULL;
-	while (env)
-	{
-		new_nodo = ft_lstnew_env(env);
-		if (!new_nodo)
-		{
-			ft_free_env(env_copy);
-			return (NULL);
-		}
-		ft_lstadd_back_env(&env_copy, new_nodo);
-		env = env->next;
-	}
-	return (env_copy);
-}
-
-void	ft_swap_env_content(t_env *a, t_env *b)
-{
-	char	*tmp;
-	int		tmp_exporte;
-
-	tmp = a->data;
-	a->data = b->data;
-	b->data = tmp;
-	tmp = a->var;
-	a->var = b->var;
-	b->var = tmp;
-	tmp = a->value;
-	a->value = b->value;
-	b->value = tmp;
-	tmp_exporte = a->exporte;
-	a->exporte = b->exporte;
-	b->exporte = tmp_exporte;
-}
-
-void	ft_sort_env_copy(t_env *head)
-{
-	t_env	*current;
-	int		swap;
-
-	swap = 1;
-	while (swap)
-	{
-		swap = 0;
-		current = head;
-		while (current && current->next)
-		{
-			if (ft_strcmp(current->var, current->next->var) > 0)
-			{
-				ft_swap_env_content(current, current->next);
-				swap = 1;
-			}
-			current = current->next;
-		}
-	}
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   pwd.c                                              :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/04 11:45:47 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/09 17:28:30 by yel-mens         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-int	ft_pwd_builtins(t_cmd *cmd)
-{
-	char	*rute;
-
-	(void)cmd;
-	rute = getcwd(NULL, 0);
-	if (!rute)
-	{
-		ft_putstr_fd("minishell: pwd: getcwd failed\n", STDERR_FILENO);
-		return (1);
-	}
-	ft_putstr_fd(rute, STDOUT_FILENO);
-	ft_putstr_fd("\n", STDOUT_FILENO);
-	free(rute);
-	return (0);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   cd.c                                               :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/05 10:57:58 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/15 20:26:25 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-static int	ft_cd_home(t_shell *shell)
-{
-	char	*home;
-	char	*oldpwd;
-	char	cwd[PATH_MAX];
-
-	home = ft_get_val("HOME", shell);
-	if (!home)
-	{
-		ft_putstr_fd("minishell: cd: HOME not set\n", STDERR_FILENO);
-		return (1);
-	}
-	oldpwd = ft_get_val("PWD", shell);
-	if (chdir(home) == -1)
-	{
-		perror("minishell: cd");
-		free(home);
-		free(oldpwd);
-		return (1);
-	}
-	if (oldpwd)
-		ft_update_env("OLDPWD", oldpwd, shell);
-	if (getcwd(cwd, PATH_MAX))
-		ft_update_env("PWD", cwd, shell);
-	free(home);
-	free(oldpwd);
-	return (0);
-}
-
-static int	ft_cd_oldpwd2(char *oldpwd, char *pwd, t_shell *shell)
-{
-	char	cwd[PATH_MAX];
-
-	ft_putstr_fd(oldpwd, STDOUT_FILENO);
-	ft_putstr_fd("\n", STDOUT_FILENO);
-	if (pwd)
-		ft_update_env("OLDPWD", pwd, shell);
-	if (getcwd(cwd, PATH_MAX))
-		ft_update_env("PWD", cwd, shell);
-	free(oldpwd);
-	free(pwd);
-	return (0);
-}
-
-static int	ft_cd_oldpwd(t_shell *shell)
-{
-	char	*oldpwd;
-	char	*pwd;
-
-	oldpwd = ft_get_val("OLDPWD", shell);
-	if (!oldpwd)
-	{
-		ft_putstr_fd("minishell: cd: OLDPWD not set\n", STDERR_FILENO);
-		return (1);
-	}
-	pwd = ft_get_val("PWD", shell);
-	if (chdir(oldpwd) == -1)
-	{
-		perror ("minishell : cd -");
-		free(pwd);
-		free(oldpwd);
-		return (1);
-	}
-	return (ft_cd_oldpwd2(oldpwd, pwd, shell));
-}
-
-int	ft_cd_builtins(t_cmd *cmd, t_shell *shell)
-{
-	if (cmd->args[1] && cmd->args[2])
-	{
-		ft_putstr_fd("minishell: cd: too many arguments\n", STDERR_FILENO);
-		shell->exit_status = 1;
-		return (1);
-	}
-	if (!cmd->args[1] || ft_strncmp(cmd->args[1], "~", 2) == 0)
-		return (ft_cd_home(shell));
-	if (ft_strncmp(cmd->args[1], "-", 2) == 0)
-		return (ft_cd_oldpwd(shell));
-	return (ft_cd_path(cmd->args[1], shell));
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   builtins.c                                         :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/04/29 12:21:11 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/10 20:16:25 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-int	ft_is_builtin(char *arg)
-{
-	if (!ft_strcmp(arg, "echo") || !ft_strcmp(arg, "cd")
-		|| !ft_strcmp(arg, "pwd") || !ft_strcmp(arg, "export")
-		|| !ft_strcmp(arg, "unset") || !ft_strcmp(arg, "env")
-		|| !ft_strcmp(arg, "exit"))
-		return (1);
-	return (0);
-}
-
-int	ft_is_builtin_no_fork(char *arg)
-{
-	if (!ft_strcmp(arg, "cd") || !ft_strcmp(arg, "export")
-		|| !ft_strcmp(arg, "unset") || !ft_strcmp(arg, "exit"))
-		return (1);
-	return (0);
-}
-
-int	ft_no_fork(t_cmd *cmd, t_shell *shell)
-{
-	if (!(!cmd->next && cmd->args && ft_is_builtin_no_fork(cmd->args[0])))
-		return (0);
-	ft_exec_builtins(cmd, shell);
-	return (1);
-}
-
-void	ft_exec_builtins(t_cmd *cmd, t_shell *shell)
-{
-	if (!ft_strcmp(cmd->args[0], "echo"))
-		shell->exit_status = ft_echo_builtins(cmd);
-	else if (!ft_strcmp(cmd->args[0], "cd"))
-		shell->exit_status = ft_cd_builtins(cmd, shell);
-	else if (!ft_strcmp(cmd->args[0], "pwd"))
-		shell->exit_status = ft_pwd_builtins(cmd);
-	else if (!ft_strcmp(cmd->args[0], "env"))
-		shell->exit_status = ft_env_builtins(cmd, shell->env);
-	else if (!ft_strcmp(cmd->args[0], "export"))
-		shell->exit_status = ft_export_builtins(shell);
-	else if (!ft_strcmp(cmd->args[0], "unset"))
-		shell->exit_status = ft_unset_builtins(shell);
-	else if (!ft_strcmp(cmd->args[0], "exit"))
-		ft_exit_builtins(cmd, shell); // actualiza dentro de la funcion
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   cd_path.c                                          :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/06 14:12:28 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/09 17:29:26 by yel-mens         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-static int	ft_check_access(char *arg, char *pwd)
-{
-	if (access(arg, F_OK) == -1)
-	{
-		ft_putstr_fd("minishell: cd: ", STDERR_FILENO);
-		ft_putstr_fd(arg, STDERR_FILENO);
-		ft_putstr_fd(": No such file or directory\n", STDERR_FILENO);
-		free(pwd);
-		return (1);
-	}
-	return (0);
-}
-
-static int	check_directory(char *arg)
-{
-	struct stat	info;
-
-	if (stat(arg, &info) == -1)
-	{
-		perror ("stat");
-		return (1);
-	}
-	if (!S_ISDIR(info.st_mode))
-	{
-		ft_putstr_fd("minishell: cd: ", STDERR_FILENO);
-		ft_putstr_fd(arg, STDERR_FILENO);
-		ft_putstr_fd(": Not a directory\n", STDERR_FILENO);
-		return (1);
-	}
-	return (0);
-}
-
-int	ft_cd_path(char *arg, t_shell *shell)
-{
-	char	cwd[PATH_MAX];
-	char	*pwd;
-
-	pwd = ft_get_val("PWD", shell);
-	if (ft_check_access(arg, pwd))
-		return (1);
-	if (check_directory(arg))
-	{
-		free(pwd);
-		return (1);
-	}
-	if (chdir(arg) == -1)
-	{
-		perror("minishell: cd");
-		free(pwd);
-		return (1);
-	}
-	if (pwd)
-		ft_update_env("OLDPWD", pwd, shell);
-	if (getcwd(cwd, PATH_MAX))
-		ft_update_env("PWD", cwd, shell);
-	free(pwd);
-	return (0);
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   exec.c                                             :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/04 11:21:39 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/06/12 19:02:10 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-static int	ft_dup_files(t_cmd *cmd)
-{
-	if (cmd->in < 0 || cmd->out < 0)
-		return (0);
-	if (cmd->in >= 0 && cmd->in != STDIN_FILENO)
-	{
-		if (dup2(cmd->in, STDIN_FILENO) < 0)
-		{
-			perror("dup2 to stdin");
-			close(cmd->in);
-			if (cmd->out >= 0 && cmd->out != STDOUT_FILENO)
-				close(cmd->out);
-			return (0);
-		}
-		close(cmd->in);
-	}
-	if (cmd->out >= 0 && cmd->out != STDOUT_FILENO)
-	{
-		if (dup2(cmd->out, STDOUT_FILENO) < 0)
-		{
-			perror("dup2 to stdout");
-			close(cmd->out);
-			return (0);
-		}
-		close(cmd->out);
-	}
-	return (1);
-}
-
-static int	ft_exec(t_cmd *cmd, char **env, t_shell *shell)
-{
-	if (!cmd->args)
-		return (0);
-	if (ft_is_builtin(cmd->args[0]))
-	{
-		ft_exec_builtins(cmd, shell);
-		ft_free_shell(shell);
-		exit(EXIT_SUCCESS);
-	}
-	else if (execve(cmd->args[0], cmd->args, env) < 0)
-		return (0);
-	return (1);
-}
-
-static void	ft_close(t_cmd *all_cmd, t_cmd *cmd)
-{
-	while (all_cmd)
-	{
-		if (all_cmd != cmd)
-		{
-			if (all_cmd->in >= 0 && all_cmd->in != STDIN_FILENO)
-				close(all_cmd->in);
-			if (all_cmd->out >= 0 && all_cmd->out != STDOUT_FILENO)
-				close(all_cmd->out);
-		}
-		all_cmd = all_cmd->next;
-	}
-}
-
-void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell)
-{
-	ft_close(shell->cmds, cmd);
-	if (!ft_dup_files(cmd))
-	{
-		if (cmd->in < 0)
-		{
-			ft_free_shell(shell);
-			exit(EXIT_FD);
-		}
-		ft_free_shell(shell);
-		return ;
-	}
-	if (!ft_exec(cmd, env, shell))
-	{
-		ft_free_shell(shell);
-		exit(EXIT_CANNOT_EXECUTE);
-	}
-}
-
-/**
- * @brief Handles the complete execution cycle of commands.
- *
- * This function initializes process handling by:
- * - Counting the number of commands in the list.
- * - Allocating memory for child PIDs.
- * - Forking and executing each command.
- * - Waiting for all children and updating the exit status.
- * - Freeing all commands after execution.
- *
- * @param env The environment variables.
- * @param shell The shell state structure.
- */
-void	ft_process(char **env, t_shell *shell)
-{
-	shell->nb_cmds = ft_count_cmds(shell->cmds);
-	shell->pids = ft_calloc(shell->nb_cmds, sizeof(pid_t));
-	if (!shell->pids)
-		return ;
-	if (!ft_init_process(env, shell))
-		return ;
-	ft_wait_status_child(shell);
-	free(shell->pids);
-	shell->pids = NULL;
-	ft_free_cmds(shell->cmds);
-	shell->cmds = NULL;
-}
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   exec_util.c                                        :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/29 21:25:01 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/06 17:09:02 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "minishell.h"
-
-/**
- * @brief Forks and launches each command that requires a new process.
- *
- * For each command:
- * - If the command is not a builtin that runs without fork,
- *   it forks a new process.
- * - In the child, it installs execution signal handlers and
- *   runs the command.
- * - PIDs of children are stored for later `waitpid` calls.
- *
- * @param env The environment variables.
- * @param shell The shell state structure.
- * @return 1 on success, 0 on failure.
- */
-int	ft_init_process(char **env, t_shell *shell)
-{
-	int		i;
-	t_cmd	*cmd;
-
-	i = 0;
-	cmd = shell->cmds;
-	while (cmd)
-	{
-		if (!ft_no_fork(cmd, shell))
-		{
-			shell->pids[i] = fork();
-			if (shell->pids[i] < 0)
-				return (1);
-			if (!shell->pids[i])
-			{
-				ft_control_signals_child();
-				ft_child_process(cmd, env, shell);
-				exit(EXIT_FAILURE);
-			}
-			i++;
-		}
-		cmd = cmd->next;
-	}
-	return (1);
-}
-
-/**
- * @brief Counts the number of commands in the command list.
- *
- * Useful to determine how many child processes will be created.
- *
- * @param cmds Pointer to the first command.
- * @return Number of commands.
- */
-
-int	ft_count_cmds(t_cmd *cmds)
-{
-	int	count;
-
-	count = 0;
-	while (cmds)
-	{
-		count++;
-		cmds = cmds->next;
-	}
-	return (count);
-}
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -2205,10 +2007,10 @@ int	ft_count_cmds(t_cmd *cmds)
 
 #include "minishell.h"
 
-static struct termios   ft_no_raw_and_echo_mode(void)
+static struct termios	ft_no_raw_and_echo_mode(void)
 {
-	struct termios  oldt;
-	struct termios  newt;
+	struct termios	oldt;
+	struct termios	newt;
 
 	tcgetattr(STDIN_FILENO, &oldt);
 	newt = oldt;
@@ -2244,28 +2046,28 @@ static char	*ft_join_to_line(unsigned char seq[4], char *line, t_shell *shell)
 	return (malloc_seq);
 }
 
-char    *ft_readline(t_shell *shell)
+char	*ft_readline(t_shell *shell)
 {
-	struct termios  oldt;
+	struct termios	oldt;
 	unsigned char	seq[4];
 	char			*line;
 	int				swtch;
-	
+
 	line = NULL;
 	oldt = ft_no_raw_and_echo_mode();
 	ft_bzero(seq, sizeof(seq));
-    while (read(STDIN_FILENO, &seq[0], 1) == 1 && seq[0] != '\n')
+	while (read(STDIN_FILENO, &seq[0], 1) == 1 && seq[0] != '\n')
 	{
 		swtch = ft_switch_seq(seq, &line, shell);
 		if (swtch == -1)
-			break;
-        if (!swtch)
+			break ;
+		if (!swtch)
 		{
 			line = ft_join_to_line(seq, line, shell);
 			ft_printf("%s", seq);
-		}	
+		}
 		ft_bzero(seq, sizeof(seq));
-    }
+	}
 	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 	ft_printf("\n");
 	if (!line && seq[0] == '\n')
@@ -2313,9 +2115,9 @@ static int	ft_manage_arrows(unsigned char seq[4], char **line, t_shell *shell)
 	return (1);
 }
 
-static int  ft_backspace(char *line)
+static int	ft_backspace(char *line)
 {
-	int len;
+	int	len;
 
 	if (!line)
 		return (1);
@@ -2328,7 +2130,7 @@ static int  ft_backspace(char *line)
 	return (1);
 }
 
-static int  ft_ctrl_D(char **line)
+static int	ft_ctrl_d(char **line)
 {
 	if (!*line)
 		return (-1);
@@ -2348,90 +2150,123 @@ int	ft_switch_seq(unsigned char seq[4], char **line, t_shell *shell)
 	if (seq[0] == 127)
 		return (ft_backspace(*line));
 	if (seq[0] == 4)
-		return (ft_ctrl_D(line));
+		return (ft_ctrl_d(line));
 	return (0);
 }
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   banner.c                                           :+:      :+:    :+:   */
+/*   signal.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/04/28 07:59:58 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/03 10:31:37 by yel-mens         ###   ########.fr       */
+/*   Created: 2025/05/22 10:32:34 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:28:40 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-void	printbanner(void)
+void	ft_sigint_handler(int signal)
 {
-	ft_printf (RED"	███╗   ███╗██╗███╗   ██╗██╗"
-		"███████╗██╗  ██╗███████╗██╗     ██╗\n"
-		"	████╗ ████║██║████╗  ██║██║██╔════╝"
-		"██║  ██║██╔════╝██║     ██║\n"
-		"	██╔████╔██║██║██╔██╗ ██║██║"
-		"███████╗███████║█████╗  ██║     ██║\n"
-		"	██║╚██╔╝██║██║██║╚██╗██║██║"
-		"╚════██║██╔══██║██╔══╝  ██║     ██║\n"
-		"	██║ ╚═╝ ██║██║██║ ╚████║██║███████║"
-		"██║  ██║███████╗███████╗███████╗\n"
-		"	╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝╚══════╝"
-		"╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n"RST);
+	(void)signal;
+	g_signal = MAIN_SIGINT;
+	write(STDOUT_FILENO, "\n", 1);
+	rl_replace_line("", 0);
+	rl_on_new_line();
+	rl_redisplay();
+}
+
+void	ft_handler_heredoc(int signal)
+{
+	(void)signal;
+	write(STDOUT_FILENO, "^C\n", 3);
+	exit(EXIT_SIGINT);
+}
+
+void	ft_wait_status_child(t_shell *shell)
+{
+	int	i;
+	int	status;
+	int	sig;
+	int	first_signal;
+
+	i = 0;
+	first_signal = 1;
+	ft_signals_ign();
+	while (i < shell->nb_cmds)
+	{
+		if (shell->pids[i] > 0)
+		{
+			waitpid(shell->pids[i], &status, 0);
+			if (WIFSIGNALED(status))
+			{
+				sig = WTERMSIG(status);
+				shell->exit_status = 128 + sig;
+				if (sig == SIGQUIT && first_signal)
+				{
+					ft_putendl_fd("Quit", STDOUT_FILENO);
+					first_signal = 0;
+				}
+				if (sig == SIGINT && first_signal)
+				{
+					write(STDOUT_FILENO, "\n", 1);
+					first_signal = 0;
+				}
+			}
+			else if (WIFEXITED(status))
+				shell->exit_status = WEXITSTATUS(status);
+		}
+		i++;
+	}
+	ft_control_signals_main();
+}
+
+void	ft_update_exit_status_by_signal(t_shell *shell)
+{
+	(void)shell;
+	if (g_signal == MAIN_SIGINT || g_signal == HEREDOC_SIGINT)
+		shell->exit_status = 130;
+	g_signal = NO_SIGNAL;
 }
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   env_utils.c                                        :+:      :+:    :+:   */
+/*   signal_control.c                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/15 18:22:00 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/27 15:12:41 by brturcio         ###   ########.fr       */
+/*   Created: 2025/05/29 16:12:14 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:29:22 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-char	*ft_extract_var(char *data)
+void	ft_control_signals_main(void)
 {
-	int		len;
-	char	*sep;
-	char	*value;
-
-	sep = ft_strchr(data, '=');
-	if (!sep)
-		return (ft_strdup(data));
-	len = sep - data;
-	if (len > 0 && data[len -1] == '+')
-		len --;
-	value = ft_substr(data, 0, len);
-	return (value);
+	signal(SIGINT, ft_sigint_handler);
+	signal(SIGQUIT, SIG_IGN);
 }
 
-char	*ft_extract_value(char *data)
+void	ft_control_signals_child(void)
 {
-	char	*sep;
-	char	*tmp;
-	char	*value;
-	int		len;
-
-	sep = ft_strchr(data, '=');
-	if (!sep)
-		return (ft_strdup(""));
-	tmp = sep + 1;
-	len = ft_strlen(tmp);
-	if (len >= 2 && ((tmp[0] == '"' && tmp[len - 1] == '"') \
-	|| (tmp[0] == '\'' && tmp[len - 1] == '\'')))
-		value = ft_substr(tmp, 1, len - 2);
-	else
-		value = ft_strdup(tmp);
-	return (value);
+	signal(SIGINT, SIG_DFL);
+	signal(SIGQUIT, SIG_DFL);
+	signal(SIGPIPE, SIG_IGN);
 }
 
+void	ft_control_signals_heredoc(void)
+{
+	signal(SIGINT, ft_handler_heredoc);
+	signal(SIGQUIT, SIG_IGN);
+}
 
+void	ft_signals_ign(void)
+{
+	signal(SIGINT, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+}
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -2548,6 +2383,55 @@ void	ft_init_env(char **env, t_shell *shell)
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
+/*   env_utils.c                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/15 18:22:00 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:31:23 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "minishell.h"
+
+char	*ft_extract_var(char *data)
+{
+	int		len;
+	char	*sep;
+	char	*value;
+
+	sep = ft_strchr(data, '=');
+	if (!sep)
+		return (ft_strdup(data));
+	len = sep - data;
+	if (len > 0 && data[len -1] == '+')
+		len --;
+	value = ft_substr(data, 0, len);
+	return (value);
+}
+
+char	*ft_extract_value(char *data)
+{
+	char	*sep;
+	char	*tmp;
+	char	*value;
+	int		len;
+
+	sep = ft_strchr(data, '=');
+	if (!sep)
+		return (ft_strdup(""));
+	tmp = sep + 1;
+	len = ft_strlen(tmp);
+	if (len >= 2 && ((tmp[0] == '"' && tmp[len - 1] == '"') \
+|| (tmp[0] == '\'' && tmp[len - 1] == '\'')))
+		value = ft_substr(tmp, 1, len - 2);
+	else
+		value = ft_strdup(tmp);
+	return (value);
+}
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
 /*   history.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
@@ -2643,7 +2527,7 @@ t_shell	*init_shell(char **env)
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/01 10:18:42 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/10 20:18:19 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/13 07:15:55 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -2703,71 +2587,7 @@ int		ft_export_builtins(t_shell *shell);
 int		ft_pwd_builtins(t_cmd *cmd);
 
 /*  unset  */
-int	ft_unset_builtins(t_shell *shell);
-
-#endif
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   parsing.h                                          :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/03 10:10:14 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/06/12 21:29:16 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#ifndef PARSING_H
-# define PARSING_H
-
-typedef enum e_token_type
-{
-	TOKEN_WORD,
-	TOKEN_STRING,
-	TOKEN_PIPE,
-	TOKEN_REDIR_IN,
-	TOKEN_REDIR_OUT,
-	TOKEN_REDIR_APPEND,
-	TOKEN_HEREDOC
-}			t_token_type;
-
-typedef struct s_token
-{
-	t_token_type	type;
-	char			*value;
-	struct s_token	*next;
-}				t_token;
-
-/* * * * * * *
-*  readline *
-* * * * * * * */
-
-int		ft_switch_seq(unsigned char seq[4], char **line, t_shell *shell);
-
-/* * * * * *
-* parser *
-* * * * * */
-
-void	ft_parse(char *line, t_shell *shell);
-int		ft_open_cmd(t_token	**token, t_cmd *cmd, t_shell *shell);
-
-/* * * * * * *
-* tokeniser *
-* * * * * * * */
-
-t_token	*ft_tokeniser(char *line, t_shell *shell);
-t_token	*ft_sort_token(t_token *token);
-
-/* * * * *
-* file *
-* * * * * */
-
-int		ft_open_infile(char *filename, t_cmd *cmd);
-int		ft_open_outfile(char *filename, t_cmd *cmd, t_token_type type);
-void	ft_open_pipe(t_cmd *cmd, t_shell *shell);
-void	ft_heredoc_continuation(t_shell *shell, pid_t pid, struct termios *original_config, int *end);
-void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *token, t_shell *shell);
+int		ft_unset_builtins(t_shell *shell);
 
 #endif
 /* ************************************************************************** */
@@ -2904,6 +2724,132 @@ void	ft_free_shell(t_shell *shell);
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
+/*   minishell.h                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/04/30 18:47:34 by brturcio          #+#    #+#             */
+/*   Updated: 2025/06/13 07:16:27 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#ifndef MINISHELL_H
+# define MINISHELL_H
+
+# include <sys/ioctl.h>
+# include <readline/readline.h>
+# include <readline/history.h>
+# include <limits.h>
+# include <stdio.h>
+# include <unistd.h>
+# include <fcntl.h>
+# include <stdlib.h>
+# include <stdio.h>
+# include <termios.h>
+# include <sys/wait.h>
+# include <sys/stat.h>
+# include <signal.h>
+# include "libft.h"
+# include "builtins.h"
+# include "structs.h"
+# include "exit_codes.h"
+# include "parsing.h"
+# include "signals.h"
+
+# define HGRN	"\e[0;92m"
+# define HMAG	"\e[0;95m"
+# define BLACK	"\033[0;30m"
+# define RED	"\033[0;31m"
+# define GREEN	"\033[0;32m"
+# define YELLOW	"\033[0;33m"
+# define BLUE	"\033[0;34m"
+# define PURPLE	"\033[0;35m"
+# define CYAN	"\033[0;36m"
+# define WHITE	"\033[0;37m"
+# define RST	"\033[0m"
+
+# define MAX_LINE_LEN 1024
+
+extern volatile sig_atomic_t	g_signal;
+
+void	printbanner(void);
+//void	ft_print_prompt(t_shell *shell);
+char	*ft_print_prompt(t_shell *shell);
+char	*ft_readline(t_shell *shell);
+void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell);
+void	ft_process(char **env, t_shell *shell);
+int		ft_init_process(char **env, t_shell *shell);
+int		ft_count_cmds(t_cmd *cmds);
+
+#endif
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   parsing.h                                          :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/05/03 10:10:14 by yel-mens          #+#    #+#             */
+/*   Updated: 2025/06/13 07:16:45 by brturcio         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#ifndef PARSING_H
+# define PARSING_H
+
+typedef enum e_token_type
+{
+	TOKEN_WORD,
+	TOKEN_STRING,
+	TOKEN_PIPE,
+	TOKEN_REDIR_IN,
+	TOKEN_REDIR_OUT,
+	TOKEN_REDIR_APPEND,
+	TOKEN_HEREDOC
+}			t_token_type;
+
+typedef struct s_token
+{
+	t_token_type	type;
+	char			*value;
+	struct s_token	*next;
+}				t_token;
+
+/* * * * * * *
+*  readline *
+* * * * * * * */
+
+int		ft_switch_seq(unsigned char seq[4], char **line, t_shell *shell);
+
+/* * * * * *
+* parser *
+* * * * * */
+
+void	ft_parse(char *line, t_shell *shell);
+int		ft_open_cmd(t_token	**token, t_cmd *cmd, t_shell *shell);
+
+/* * * * * * *
+* tokeniser *
+* * * * * * * */
+
+t_token	*ft_tokeniser(char *line, t_shell *shell);
+t_token	*ft_sort_token(t_token *token);
+
+/* * * * *
+* file *
+* * * * * */
+
+int		ft_open_infile(char *filename, t_cmd *cmd);
+int		ft_open_outfile(char *filename, t_cmd *cmd, t_token_type type);
+void	ft_open_pipe(t_cmd *cmd, t_shell *shell);
+void	ft_heredoc_continuation(t_shell *shell, pid_t pid, \
+struct termios *original_config, int *end);
+void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *token, t_shell *shell);
+
+#endif
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
 /*   signals.h                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
@@ -2938,72 +2884,5 @@ void	ft_signals_ign(void);
 void	ft_wait_status_child(t_shell *shell);
 void	ft_update_exit_status_by_signal(t_shell *shell);
 int		ft_wait_status_heredoc(t_shell *shell, pid_t pid);
-
-#endif
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   minishell.h                                        :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/04/30 18:47:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/12 21:33:01 by brturcio         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#ifndef MINISHELL_H
-# define MINISHELL_H
-
-// À voir si j’en aurai besoin
-# include <sys/ioctl.h>
-# include <readline/readline.h>
-# include <readline/history.h>
-
-
-# include <limits.h>
-# include <stdio.h>
-# include <unistd.h>
-# include <fcntl.h>
-# include <stdlib.h>
-# include <stdio.h>
-# include <termios.h>
-# include <sys/wait.h>
-# include <sys/stat.h>
-# include <signal.h>
-# include "libft.h"
-# include "builtins.h"
-# include "structs.h"
-# include "exit_codes.h"
-# include "parsing.h"
-# include "signals.h"
-
-
-
-# define HGRN	"\e[0;92m"
-# define HMAG	"\e[0;95m"
-
-# define BLACK	"\033[0;30m"
-# define RED	"\033[0;31m"
-# define GREEN	"\033[0;32m"
-# define YELLOW	"\033[0;33m"
-# define BLUE	"\033[0;34m"
-# define PURPLE	"\033[0;35m"
-# define CYAN	"\033[0;36m"
-# define WHITE	"\033[0;37m"
-# define RST	"\033[0m"
-
-# define MAX_LINE_LEN 1024
-
-extern volatile sig_atomic_t	g_signal;
-
-void	printbanner(void);
-//void	ft_print_prompt(t_shell *shell);
-char	*ft_print_prompt(t_shell *shell);
-char	*ft_readline(t_shell *shell);
-void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell);
-void	ft_process(char **env, t_shell *shell);
-int		ft_init_process(char **env, t_shell *shell);
-int		ft_count_cmds(t_cmd *cmds);
 
 #endif

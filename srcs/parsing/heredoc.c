@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/12/24 17:23:25 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/06/12 21:53:23 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/13 07:12:41 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,9 +82,10 @@ static void	ft_read_stdin(int end[2], char *limiter, t_token *a, t_shell *shl)
 	exit(EXIT_FAILURE);
 }
 
-void	ft_heredoc_continuation(t_shell *shell, pid_t pid, struct termios *original_config, int *end)
+void	ft_heredoc_continuation(t_shell *shell, pid_t pid, \
+struct termios *original_config, int *end)
 {
-	int status;
+	int	status;
 
 	close(end[1]);
 	ft_signals_ign();
@@ -97,14 +98,20 @@ void	ft_heredoc_continuation(t_shell *shell, pid_t pid, struct termios *original
 		shell->cmds->in = -1;
 		close(end[0]);
 	}
+	else if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_FAILURE)
+	{
+		ft_printf("\nminishell: warning: here-document delimited "\
+"by end-of-file (wanted 'delimiter')\n");
+		shell->cmds->in = end[0];
+	}
 	else
 		shell->cmds->in = end[0];
 }
 
 void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
 {
-	pid_t	pid;
-	int		end[2];
+	pid_t			pid;
+	int				end[2];
 	struct termios	original_config;
 	struct termios	heredoc_config;
 
@@ -127,4 +134,3 @@ void	ft_heredoc(char *limiter, t_cmd *cmd, t_token *alltkn, t_shell *shell)
 	}
 	ft_heredoc_continuation(shell, pid, &original_config, end);
 }
-
