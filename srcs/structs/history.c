@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/07 17:24:58 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/27 17:15:18 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/24 13:36:52 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,10 @@ void	ft_init_history(char *line, t_shell *shell)
 
 	history = malloc(sizeof(t_hist));
 	if (!history)
+	{
+		free(line);
 		ft_error("history malloc error", EXIT_MALLOC, shell);
+	}
 	history->line = line;
 	if (shell->history)
 		history->next = ft_add_first_history(history, shell);

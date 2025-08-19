@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/07 15:42:29 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/06/12 10:04:36 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/07/01 11:51:29 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,9 @@ static int	ft_compare(char *var, t_env *current_env, int len)
 	char	*current_var;
 	int		i;
 
-	current_var = current_env->data;
+	current_var = current_env->var;
+	if (len != (int) ft_strlen(current_var))
+		return (0);
 	i = 0;
 	while (i < len)
 	{
@@ -66,30 +68,23 @@ int	ft_unset_env(t_env *to_delete, t_shell *shell)
 
 void	ft_append_env(char *data, t_shell *shell)
 {
-	t_env	*env;
 	t_env	*var_env;
 
 	if (!data)
 		ft_error("No data to append in env", EXIT_SYNTAX_ERROR, shell);
 	var_env = malloc(sizeof(t_env));
 	if (!var_env)
+	{
+		free(data);
 		ft_error("new env var malloc error", EXIT_MALLOC, shell);
+	}
 	var_env->data = data;
 	var_env->var = ft_extract_var(data);
 	var_env->value = ft_extract_value(data);
 	var_env->exporte = NOT_EXPORTE;
 	var_env->next = NULL;
 	var_env->prev = NULL;
-	if (!shell->env)
-	{
-		shell->env = var_env;
-		return ;
-	}
-	env = shell->env;
-	while (env->next)
-		env = env->next;
-	var_env->prev = env;
-	env->next = var_env;
+	ft_append_env_continuatio(shell, var_env);
 }
 
 void	ft_init_env(char **env, t_shell *shell)

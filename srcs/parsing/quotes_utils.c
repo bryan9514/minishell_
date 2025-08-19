@@ -1,34 +1,18 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   shell.c                                            :+:      :+:    :+:   */
+/*   quotes_utils.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/05/02 12:13:11 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/06/24 13:37:14 by brturcio         ###   ########.fr       */
+/*   Created: 2025/07/01 12:28:07 by brturcio          #+#    #+#             */
+/*   Updated: 2025/07/01 14:08:58 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "minishell.h"
-
-t_shell	*init_shell(char **env)
+void	ft_dup_from_line_two(int *i, int *sg_quote, int *db_quote)
 {
-	t_shell	*shell;
-
-	shell = malloc(sizeof(t_shell));
-	if (!shell)
-	{
-		perror("shell malloc");
-		exit(EXIT_MALLOC);
-	}
-	shell->cmds = NULL;
-	shell->history = NULL;
-	shell->env = NULL;
-	shell->pids = NULL;
-	shell->tokens = NULL;
-	shell->nb_cmds = 0;
-	shell->exit_status = EXIT_SUCCESS;
-	ft_init_env(env, shell);
-	return (shell);
+	*i = 0;
+	*sg_quote = 0;
+	*db_quote = 0;
 }

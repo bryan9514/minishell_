@@ -6,19 +6,19 @@
 /*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 22:47:10 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/09 12:27:13 by yel-mens         ###   ########.fr       */
+/*   Updated: 2025/06/29 16:07:33 by yel-mens         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minishell.h"
 
-t_cmd	*ft_init_cmd(void)
+t_cmd	*ft_init_cmd(t_shell *shell)
 {
 	t_cmd	*cmd;
 
 	cmd = malloc(sizeof(t_cmd));
 	if (!cmd)
-		return (NULL);
+		ft_error("malloc cmd error", EXIT_MALLOC, shell);
 	cmd->args = NULL;
 	cmd->in = STDIN_FILENO;
 	cmd->out = STDOUT_FILENO;
@@ -26,7 +26,7 @@ t_cmd	*ft_init_cmd(void)
 	return (cmd);
 }
 
-static int	ft_manage_token(t_token **tkn, t_cmd *cmd, t_token *a, t_shell *s)
+static int	ft_manage_token(t_token **tkn, t_cmd *cmd, t_shell *s)
 {
 	int	success;
 
@@ -41,11 +41,11 @@ static int	ft_manage_token(t_token **tkn, t_cmd *cmd, t_token *a, t_shell *s)
 	else if ((*tkn)->type == TOKEN_PIPE)
 		ft_open_pipe(cmd, s);
 	else if ((*tkn)->type == TOKEN_HEREDOC)
-		ft_heredoc((*tkn)->value, cmd, a, s);
+		success = ft_heredoc_in_cmd(cmd, *tkn);
 	return (success);
 }
 
-static void	ft_free_token(t_token *token)
+void	ft_free_token(t_token *token, t_shell *shell)
 {
 	t_token	*next_token;
 
@@ -56,29 +56,34 @@ static void	ft_free_token(t_token *token)
 		free(token);
 		token = next_token;
 	}
+	shell->tokens = NULL;
 }
 
-void	ft_parse(char *line, t_shell *shell)
+int	ft_parse(char *line, t_shell *shell)
 {
 	t_token	*token;
 	t_token	*all_token;
 	t_cmd	*cmd;
 
 	all_token = ft_tokeniser(line, shell);
-	token = ft_sort_token(all_token);
+	if (!all_token)
+		return (0);
+	token = ft_sort_token(all_token, shell);
+	if (!ft_check_token(&token, shell))
+		return (0);
+	shell->tokens = all_token;
 	all_token = token;
-	cmd = ft_init_cmd();
-	if (!cmd)
-		ft_error("cmd malloc error", EXIT_MALLOC, shell);
+	cmd = ft_init_cmd(shell);
 	shell->cmds = cmd;
 	while (token)
 	{
-		if (!ft_manage_token(&token, cmd, all_token, shell))
+		if (!ft_manage_token(&token, cmd, shell))
 			break ;
 		if (token->type == TOKEN_PIPE)
 			cmd = cmd->next;
 		if (token)
 			token = token->next;
 	}
-	ft_free_token(all_token);
+	ft_free_token(all_token, shell);
+	return (1);
 }

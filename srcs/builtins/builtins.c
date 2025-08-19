@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/29 12:21:11 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/13 07:20:27 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/07/01 11:04:49 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,8 @@ int	ft_is_builtin_no_fork(char *arg)
 
 int	ft_no_fork(t_cmd *cmd, t_shell *shell)
 {
-	if (!(!cmd->next && cmd->args && ft_is_builtin_no_fork(cmd->args[0])))
+	if (!(!(shell->nb_cmds > 1) && cmd->args
+			&& ft_is_builtin_no_fork(cmd->args[0])))
 		return (0);
 	ft_exec_builtins(cmd, shell);
 	return (1);

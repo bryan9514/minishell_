@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   sort_token.c                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/05 12:52:59 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/07 10:28:31 by yel-mens         ###   ########.fr       */
+/*   Updated: 2025/07/01 11:36:02 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,7 +63,17 @@ static void	ft_link_token(t_token **tab_token, int len, t_token *last_token)
 	cur_token->next = last_token;
 }
 
-t_token	*ft_sort_token(t_token *token)
+static void	ft_sort_token_continuation(t_shell *shell,
+	t_token **token, t_token **tab_token, int *tab_info)
+{
+	if (*token && (*token)->type == TOKEN_PIPE)
+		(*token)->next = ft_sort_token((*token)->next, shell);
+	ft_link_token(tab_token, tab_info[0], *token);
+	*token = tab_token[0];
+	free(tab_token);
+}
+
+t_token	*ft_sort_token(t_token *token, t_shell *shell)
 {
 	t_token	**tab_token;
 	int		tab_info[3];
@@ -75,6 +85,8 @@ t_token	*ft_sort_token(t_token *token)
 	if (tab_info[0] == 0)
 		return (token);
 	tab_token = malloc(sizeof(t_token *) * tab_info[0]);
+	if (!tab_token)
+		ft_error("sort tkn malloc error", EXIT_MALLOC, shell);
 	len = tab_info[0];
 	while (len-- > 0)
 		tab_token[len] = NULL;
@@ -83,10 +95,6 @@ t_token	*ft_sort_token(t_token *token)
 		ft_place_token(token, tab_token, tab_info);
 		token = token->next;
 	}
-	if (token && token->type == TOKEN_PIPE)
-		token->next = ft_sort_token(token->next);
-	ft_link_token(tab_token, tab_info[0], token);
-	token = tab_token[0];
-	free(tab_token);
+	ft_sort_token_continuation(shell, &token, tab_token, &tab_info[0]);
 	return (token);
 }

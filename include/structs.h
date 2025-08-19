@@ -6,12 +6,31 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/02 12:03:15 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/06/10 17:44:22 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/07/01 11:52:07 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef STRUCTS_H
 # define STRUCTS_H
+
+typedef enum e_token_type
+{
+	TOKEN_WORD,
+	TOKEN_STRING,
+	TOKEN_PIPE,
+	TOKEN_REDIR_IN,
+	TOKEN_REDIR_OUT,
+	TOKEN_REDIR_APPEND,
+	TOKEN_HEREDOC
+}			t_token_type;
+
+typedef struct s_token
+{
+	t_token_type	type;
+	char			*value;
+	int				in;
+	struct s_token	*next;
+}				t_token;
 
 typedef struct s_cmd
 {
@@ -43,6 +62,7 @@ typedef struct s_shell
 	t_cmd	*cmds;
 	t_env	*env;
 	t_hist	*history;
+	t_token	*tokens;
 	int		exit_status;
 	pid_t	*pids;
 	int		nb_cmds;
@@ -60,6 +80,7 @@ t_shell	*init_shell(char **env);
 
 char	*ft_extract_value(char *data);
 char	*ft_extract_var(char *data);
+void	ft_append_env_continuatio(t_shell *shell, t_env *var_env);
 
 /* * * * *
 *  env *
@@ -74,7 +95,7 @@ int		ft_unset_env(t_env *to_delete, t_shell *shell);
 * cmd *
 * * * * */
 
-t_cmd	*ft_init_cmd(void);
+t_cmd	*ft_init_cmd(t_shell *shell);
 
 /* * * * * * *
 *  history *

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.h                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
+/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/30 18:47:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/13 08:14:09 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/27 17:20:53 by yel-mens         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,8 @@
 # define MINISHELL_H
 
 # include <sys/ioctl.h>
-# include <readline/readline.h>
-# include <readline/history.h>
+// # include <readline/readline.h>
+// # include <readline/history.h>
 # include <limits.h>
 # include <stdio.h>
 # include <unistd.h>
@@ -50,11 +50,11 @@
 extern volatile sig_atomic_t	g_signal;
 
 void	printbanner(void);
-char	*ft_print_prompt(t_shell *shell);
+void	ft_print_prompt(t_shell *shell);
 char	*ft_readline(t_shell *shell);
 void	ft_child_process(t_cmd *cmd, char **env, t_shell *shell);
 void	ft_process(char **env, t_shell *shell);
-int		ft_init_process(char **env, t_shell *shell);
+int		ft_init_process(char **env, t_shell *shell, int i);
 int		ft_count_cmds(t_cmd *cmds);
 
 #endif

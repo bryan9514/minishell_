@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/22 10:32:34 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/13 08:48:30 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/30 16:04:24 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,17 +16,14 @@ void	ft_sigint_handler(int signal)
 {
 	(void)signal;
 	g_signal = MAIN_SIGINT;
-	write(STDOUT_FILENO, "\n", 1);
-	rl_replace_line("", 0);
-	rl_on_new_line();
-	rl_redisplay();
+	write(STDOUT_FILENO, "^C", 2);
 }
 
 void	ft_handler_heredoc(int signal)
 {
 	(void)signal;
 	write(STDOUT_FILENO, "^C\n", 3);
-	exit(EXIT_SIGINT);
+	g_signal = MAIN_SIGINT;
 }
 
 void	ft_wait_status_child_continution(t_shell *shell, \
@@ -77,6 +74,6 @@ void	ft_wait_status_child(t_shell *shell)
 void	ft_update_exit_status_by_signal(t_shell *shell)
 {
 	if (g_signal == MAIN_SIGINT)
-		shell->exit_status = 130;
+		shell->exit_status = EXIT_SIGINT;
 	g_signal = NO_SIGNAL;
 }

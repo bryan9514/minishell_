@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/07 17:38:56 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/13 07:21:12 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/30 17:27:19 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,8 @@
 static void	ft_exit_error_msj(int exit, char *arg, char *msj)
 {
 	(void)exit;
-	ft_putstr_fd("minishell: exit: ", STDERR_FILENO);
+	if (isatty(STDIN_FILENO))
+		ft_putstr_fd("minishell: exit: ", STDERR_FILENO);
 	if (arg)
 	{
 		ft_putstr_fd(arg, STDERR_FILENO);
@@ -92,7 +93,7 @@ void	ft_exit_builtins(t_cmd *cmd, t_shell *shell)
 	int	status;
 
 	status = shell->exit_status;
-	if (isatty(STDIN_FILENO))
+	if (isatty(STDIN_FILENO) && !cmd->next)
 		ft_putstr_fd("exit\n", STDERR_FILENO);
 	if (!cmd->args[1])
 	{

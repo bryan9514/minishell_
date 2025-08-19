@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/05 15:00:01 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/13 07:30:46 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/06/30 17:14:02 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,7 +47,8 @@ char	*ft_update_env(char *var, char *data, t_shell *shell)
 		if (!new_data)
 			return (NULL);
 		ft_append_env(ft_strdup(new_data), shell);
-		return (new_data);
+		free(new_data);
+		return (NULL);
 	}
 	new_data = build_new_env(var, data);
 	if (!new_data)

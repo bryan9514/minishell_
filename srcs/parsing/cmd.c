@@ -23,6 +23,8 @@ static char	**ft_get_path(t_shell *shell)
 	else
 	{
 		path = malloc(sizeof(char *));
+		if (!path)
+			return (NULL);
 		path[0] = NULL;
 	}
 	return (path);
@@ -34,6 +36,8 @@ static int	ft_search_path(char *cmd_name, char **args, char **path)
 	char	*arg;
 	char	*cmd_path;
 
+	if (!path)
+		return (0);
 	i = 0;
 	while (path[i])
 	{

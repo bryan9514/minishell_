@@ -6,7 +6,7 @@
 /*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 14:27:43 by brturcio          #+#    #+#             */
-/*   Updated: 2025/06/13 07:22:14 by brturcio         ###   ########.fr       */
+/*   Updated: 2025/07/01 11:06:02 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,11 +31,11 @@ int	ft_parsing_export_arg(char *arg)
 	i = 1;
 	if (!ft_isalpha(arg[0]) && (arg[0] != '_'))
 		return (1);
-	while (arg[i] && !(arg[i] == '=' || (arg[i] \
-== '+' && arg[i + 1] == '=')))
+	while (arg[i] && !(arg[i] == '=' || (arg[i]
+				== '+' && arg[i + 1] == '=')))
 	{
-		if (!ft_isalpha(arg[i]) && !ft_isdigit(arg[i]) \
-&& !(arg[i] == '_'))
+		if (!ft_isalpha(arg[i]) && !ft_isdigit(arg[i])
+			&& !(arg[i] == '_'))
 			return (1);
 		i++;
 	}

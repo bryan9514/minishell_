@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   cd_path.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: brturcio <brturcio@student.42angouleme.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/06 14:12:28 by brturcio          #+#    #+#             */
-/*   Updated: 2025/05/09 17:29:26 by yel-mens         ###   ########.fr       */
+/*   Updated: 2025/06/30 17:08:20 by brturcio         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,13 @@ static int	check_directory(char *arg)
 	return (0);
 }
 
+static int	ft_free_pwd(char *pwd)
+{
+	if (pwd)
+		free(pwd);
+	return (1);
+}
+
 int	ft_cd_path(char *arg, t_shell *shell)
 {
 	char	cwd[PATH_MAX];
@@ -53,20 +60,18 @@ int	ft_cd_path(char *arg, t_shell *shell)
 	if (ft_check_access(arg, pwd))
 		return (1);
 	if (check_directory(arg))
-	{
-		free(pwd);
-		return (1);
-	}
+		return (ft_free_pwd(pwd));
 	if (chdir(arg) == -1)
 	{
 		perror("minishell: cd");
-		free(pwd);
-		return (1);
+		return (ft_free_pwd(pwd));
 	}
 	if (pwd)
 		ft_update_env("OLDPWD", pwd, shell);
 	if (getcwd(cwd, PATH_MAX))
 		ft_update_env("PWD", cwd, shell);
+	else
+		return (ft_free_pwd(pwd));
 	free(pwd);
 	return (0);
 }

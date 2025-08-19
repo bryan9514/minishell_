@@ -6,7 +6,7 @@
 /*   By: yel-mens <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/03 23:15:55 by yel-mens          #+#    #+#             */
-/*   Updated: 2025/05/06 22:13:17 by yel-mens         ###   ########.fr       */
+/*   Updated: 2025/06/29 16:07:13 by yel-mens         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,9 +46,7 @@ void	ft_open_pipe(t_cmd *cmd, t_shell *shell)
 	t_cmd	*new_cmd;
 	int		end[2];
 
-	new_cmd = ft_init_cmd();
-	if (!new_cmd)
-		ft_error("malloc cmd error", EXIT_MALLOC, shell);
+	new_cmd = ft_init_cmd(shell);
 	if (pipe(end) < 0)
 		ft_error("pipe error", EXIT_FD, shell);
 	if (cmd->out == STDOUT_FILENO)
@@ -57,4 +55,17 @@ void	ft_open_pipe(t_cmd *cmd, t_shell *shell)
 		close(end[1]);
 	new_cmd->in = end[0];
 	cmd->next = new_cmd;
+}
+
+int	ft_heredoc_in_cmd(t_cmd *cmd, t_token *token)
+{
+	if (cmd->in > 0 && cmd->in != STDIN_FILENO)
+		close(cmd->in);
+	cmd->in = token->in;
+	if (cmd->in < 0)
+	{
+		perror("heredoc file error");
+		return (0);
+	}
+	return (1);
 }
